@@ -1,0 +1,76 @@
+
+<!doctype html>
+<html>
+<head>
+    <style type="text/css">
+        .mainGraph{
+            margin-right: 100px;
+            text-align: center;
+            width: 70%;
+            float: right;
+        }
+        table{
+            position: fixed;
+            margin-top: 175px;
+            border: 1px solid black;
+            border-collapse: collapse;
+            width: 15%;
+            margin-left: 100px;
+        }
+        th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+
+<body>
+
+    <table>
+         {% for key, value in newdata.items() %}
+            <tr>
+               <th> {{ key }} </th>
+               <td> {{ value }} </td>
+            </tr>
+         {% endfor %}
+    </table>
+
+    <div id="mainGraph" class="mainGraph">
+    </div>
+
+
+    <!-- allows page refresh every 10 seconds -->
+    <!meta http-equiv="refresh" content="10" >
+
+</body>
+
+    <!-- D3.js -->
+    <!-- jQuery -->
+    <!-- Plotly.js -->
+    <script src="{{ url_for('static', filename='plotly.min.js') }}"> </script>
+    <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
+    <script type="text/javascript" charset="utf-8">
+
+        var graphs = {{graphJSON | safe}};
+        Plotly.plot('mainGraph',graphs.data,graphs.layout || {});
+
+        // Connect to the Socket.IO server.
+        var socket = io.connect('http://'  + document.domain + ':' + location.port );
+        // Event handler for new connections.
+        // The callback function is invoked when a connection with the
+        // server is established.
+        socket.on('connect', function(msg) {
+            socket.emit('my_event', {data: 'I\'m connected!'});
+        });
+        socket.on('new_data', function(data){
+                console.log("madeeee it");
+                //for idx in data
+                //{
+                    //var ndata = {y=data[idx]['y'], x=data[idx]['y'], name=data[idx]['y']};
+                    //plotly.extendTraces('mainGraph', ndata);
+                //}
+        });
+
+    </script>
+
+</html>
