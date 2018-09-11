@@ -49,13 +49,15 @@
         <div class="column">
             <table id="data-table" > </table>
 
-            <select id="state" class="state">
+            <select id="state" class="state"
+                               onchange="console.log(this);console.log(this.selectedIndex);console.log(this.options[this.selectedIndex].text);">
                  {% for state in states %}
                  <option> {{state}} </option>
                  {% endfor %}
             </select>
             <div class="checkboxes">
-            <input type="checkbox"  value="option"> Option1<br>
+            <input type="checkbox"  name="option"
+                                    onclick="console.log(this.checked);" > Option1<br>
             </div>
         </div>
         <div class="column2">
