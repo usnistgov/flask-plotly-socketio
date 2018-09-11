@@ -13,6 +13,7 @@ from logzero import logger
 # import socket
 import subprocess
 import zmq
+import fridge_machine
 
 try:
     from eventlet import monkey_patch as monkey_patch
@@ -155,6 +156,7 @@ def plot():
     test_connect()
 
     return render_template('webFridge.html', graphJSON=graphJSON,
+                           states = fridge_machine.Fridge.fridge_states,
                            async_mode=socketio.async_mode)
 
 

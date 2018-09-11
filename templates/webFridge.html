@@ -18,6 +18,11 @@
             border: 1px solid black;
             border-collapse: collapse;
         }
+        .state{
+            position: fixed;
+            margin-top: 300px;
+            margin-left: 50px;
+        }
     </style>
 </head>
 
@@ -26,6 +31,12 @@
     <table id="data-table" >
 
     </table>
+
+    <select id="state" class="state">
+         {% for state in states %}
+         <option> {{state}} </option>
+         {% endfor %}
+    </select>
 
     <div id="mainGraph" class="mainGraph" >
     </div>
@@ -46,6 +57,19 @@
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
     -->
     <script type="text/javascript" charset="utf-8">
+        /**
+         * Set Select Box Selection By Text
+         * @param eid Element ID
+         * @param eval Element Index
+         */
+
+        function setSelectBoxByText(eid, etxt) {
+            var eid = document.getElementById(eid);
+            for (var i = 0; i < eid.options.length; ++i) {
+                if (eid.options[i].text === etxt)
+                    eid.options[i].selected = true;
+            }
+        }
 
         var graphs = {{graphJSON | safe}};
         Plotly.plot('mainGraph',graphs.data,graphs.layout || {});
