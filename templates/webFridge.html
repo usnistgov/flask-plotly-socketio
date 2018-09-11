@@ -36,6 +36,11 @@
             display: table;
             clear: both;
         }
+        .checkboxes {
+            position: fixed;
+            margin-top: 350px;
+            margin-left: 50px;
+        }
     </style>
 </head>
 
@@ -49,6 +54,9 @@
                  <option> {{state}} </option>
                  {% endfor %}
             </select>
+            <div class="checkboxes">
+            <input type="checkbox"  value="option"> Option1<br>
+            </div>
         </div>
         <div class="column2">
             <div id="mainGraph" class="mainGraph" > </div>
