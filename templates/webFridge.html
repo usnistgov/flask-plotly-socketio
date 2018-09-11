@@ -41,6 +41,9 @@
             margin-top: 350px;
             margin-left: 50px;
         }
+        .size-12 {
+            font-size: 18px;
+        }
     </style>
 </head>
 
@@ -56,8 +59,24 @@
                  {% endfor %}
             </select>
             <div class="checkboxes">
-            <input type="checkbox"  name="option"
-                                    onclick="console.log(this.checked);" > Option1<br>
+            <input type="checkbox"  id="manual"
+                                    onclick="console.log(this.checked);">
+                Manual<br>
+            <br>
+            <input type="checkbox"  id="pump"
+                                    onclick="console.log(this.checked);">
+                Pump On<br>
+            <br>
+            <input type="checkbox"  id="switch"
+                                    onclick="console.log(this.checked);">
+                Switch On<br>
+            <br>
+            Recycle Hour:
+            <input type="number" class="size-12" value="2" min="-1" max="23">
+            <div id="next">
+                Next Recycle Time: "Need to fix this"
+            </div>
+
             </div>
         </div>
         <div class="column2">
@@ -85,7 +104,6 @@
          * @param eid Element ID
          * @param eval Element Index
          */
-
         function setSelectBoxByText(eid, etxt) {
             var eid = document.getElementById(eid);
             for (var i = 0; i < eid.options.length; ++i) {
