@@ -3,10 +3,6 @@
 <html>
 <head>
     <style type="text/css">
-        .mainGraph{
-            margin-left: 300px;
-            text-align: center;
-        }
         table{
             position: fixed;
             margin-top: 100px;
@@ -23,24 +19,41 @@
             margin-top: 300px;
             margin-left: 50px;
         }
+
+        /* Create two equal columns that floats next to each other */
+        .column {
+            float: left;
+            width: 25%;
+            padding: 10px;
+        }
+        .column2 {
+            float: left;
+        }
+
+        /* Clear floats after the columns */
+        .row:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
     </style>
 </head>
 
 <body>
+    <div class="row">
+        <div class="column">
+            <table id="data-table" > </table>
 
-    <table id="data-table" >
-
-    </table>
-
-    <select id="state" class="state">
-         {% for state in states %}
-         <option> {{state}} </option>
-         {% endfor %}
-    </select>
-
-    <div id="mainGraph" class="mainGraph" >
+            <select id="state" class="state">
+                 {% for state in states %}
+                 <option> {{state}} </option>
+                 {% endfor %}
+            </select>
+        </div>
+        <div class="column2">
+            <div id="mainGraph" class="mainGraph" > </div>
+        </div>
     </div>
-
 
     <!-- allows page refresh every 10 seconds -->
     <!meta http-equiv="refresh" content="10" >
