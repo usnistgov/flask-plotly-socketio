@@ -15,6 +15,13 @@ import subprocess
 import zmq
 import fridge_machine
 
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
+import data_logger
+import client
+import lttb
 try:
     from eventlet import monkey_patch as monkey_patch
     monkey_patch()
@@ -57,24 +64,71 @@ app.config['SECRET_KEY'] = 'secret!'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_mode=None)
 thread = None
-
+"""
 with open('2017-10-10-12-19-14.csv', 'r') as f:
     labels = f.readline()
     # labels = labels[1:]
     labels = labels.split(',')
     labels = [label.strip() for label in labels]
     print('number of label', len(labels))
+"""
+labels = client.client('127.0.0.1', 50326, 'getlabels')
+labels = labels.split(',')
+labels = [label.strip() for label in labels]
 for l in labels:
     print(len(l), l, type(l))
-
 graph = ['40K', '4K', '1K', 'switch', 'pump']
+
+def load_history():
+    # global data_history, logfile_prefix
+    # if 'logfile_prefix' in fridge.config['logfile_prefix']:
+    #     prefix = fridge.config['logfile_prefix']
+    # else:
+    #     prefix = ''
+    #  Find previous log file
+
+    previous_log_filename = data_logger.getlast.getlast('../logs/', '*.csv')
+    print('log_filename', previous_log_filename)
+    #  Create logger object
+    if '-' in previous_log_filename:
+        logfile_prefix = previous_log_filename.split('-')[:2]
+        print('logfile_prefix', logfile_prefix)
+        try:
+            if len(logfile_prefix[1]) == 4:  # Second item is the year
+                logfile_prefix = logfile_prefix[0]
+            else:
+                logfile_prefix = logfile_prefix[0][:-4]  # strip year
+                print('logfile_prefix', logfile_prefix)
+        except:
+            pass
+    else:
+        logfile_prefix = ''
+    filename = '../logs/'+previous_log_filename
+    tail = subprocess.Popen(['tail', '-10000', filename],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, errors = tail.communicate()
+    # with open(filename, 'r') as f:
+    #    history = deque(f, history_start)
+    history_start = 100000
+    history = deque(iter(output.decode().splitlines()), history_start)
+    data_history = np.genfromtxt(history, invalid_raise=False, delimiter=',')
+    #print(type(data_history), data_history.shape)
+
+    try:
+        last_point = history.pop()
+    except:
+        last_point = None
+    app_logger.info('last_point, %r' % last_point)
+    return data_history, filename
+
+
 def background_thread():
     global labels
     """send server generated events to clients."""
     socketio.sleep(1)
     while True:
         if True:
-            socketio.sleep(0)
+            socketio.sleep(1)
             socks = dict(poller.poll())
             # print('poll socks', socks)
             if subscriber in socks:
@@ -86,7 +140,7 @@ def background_thread():
             socketio.sleep(10)
             data_string = '%.2f, %f' % (time.time(), random.random())
             data = data_string.split(',')
-        # app_logger.info(data_string)
+        app_logger.info(data_string)
         x = datetime.datetime.fromtimestamp(float(data[0]))
         # x = datetime.datetime.now()
         x = x.strftime('%Y-%m-%d %H:%M:%S')
@@ -97,7 +151,7 @@ def background_thread():
             # idx = self.sensor_names.index(name) + 1
             # value = float(data_string_list[idx])
         for i, name in enumerate(graph):
-            idx = labels.index(name)
+            idx = labels.index(name.lower()) + 1
             value = float(data[idx])
             if np.isnan(value):
                 value = -1
@@ -132,9 +186,9 @@ def plot():
     plotTitle = 'Flask socketio plotly test app'
 
     # Updates the data for the table
-    newdata = load_data(graph)
-    print(newdata)
+    newdata, filename = load_data(graph)
     # Create a traces and layout to plot
+    print('filename', filename)
     data=[]
     figure={}
     # for j in range(num_curves):
@@ -149,8 +203,6 @@ def plot():
     figure=dict(data=data, layout=layout)
     graphJSON = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
 
-    # Add dropdown for fridge states
-
     # try to connect to clients
     print('try to connect to clients')
     test_connect()
@@ -161,12 +213,27 @@ def plot():
 
 
 def load_data(graph):
+    history, filename = load_history()
     newdata = []
+    x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
+         for d in history[:, 0]]
+ 
     for idx, name in enumerate(graph):
+        idx = labels.index(name.lower()) + 2  # Could be 2 if there is human readable date
+        if len(history[:, 0]) > 1000:
+            hdata = np.column_stack((history[:, 0], history[:, idx]))
+            downsize = lttb.downsample(hdata, n_out=1000)
+            assert downsize.shape == (1000, 2)
+            x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
+                    for d in downsize[:, 0]]
+            y = list(downsize[:,1])
+        else:
+            y = list(history[:, idx])
+
         print('load_data:', name)
-        newdata.append({'x': [], 'y': [], 'type': 'scatter',
+        newdata.append({'x': x, 'y': y, 'type': 'scatter',
                             'mode':'markers+lines', 'name':'%s' % name})
-    return newdata
+    return newdata, filename
 
 
 
