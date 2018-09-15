@@ -55,8 +55,13 @@ if isinstance(subscriber_filter, bytes):
     subscriber_filter = subscriber_filter.decode('ascii')
 subscriber.setsockopt_string(zmq.SUBSCRIBE, subscriber_filter)
 
+state_subscriber = context.socket(zmq.SUB)
+state_subscriber.connect("tcp://localhost:5557")
+state_subscriber.setsockopt_string(zmq.SUBSCRIBE, subscriber_filter)
+
 poller = zmq.Poller()
 poller.register(subscriber, zmq.POLLIN)
+poller.register(state_subscriber, zmq.POLLIN)
 
 
 app = Flask(__name__)
@@ -127,40 +132,39 @@ def background_thread():
     """send server generated events to clients."""
     socketio.sleep(1)
     while True:
-        if True:
-            socketio.sleep(1)
-            socks = dict(poller.poll())
-            # print('poll socks', socks)
-            if subscriber in socks:
-                data_string = subscriber.recv_string()
-                # print('subscriber message:', data_string)
-                data = data_string.split(',')
-                # print('len of data', len(data))
-        else:
-            socketio.sleep(10)
-            data_string = '%.2f, %f' % (time.time(), random.random())
+        socketio.sleep(1)
+        socks = dict(poller.poll())
+        # print('poll socks', socks)
+        if subscriber in socks:
+            data_string = subscriber.recv_string()
+            # print('subscriber message:', data_string)
             data = data_string.split(',')
-        app_logger.info(data_string)
-        x = datetime.datetime.fromtimestamp(float(data[0]))
-        # x = datetime.datetime.now()
-        x = x.strftime('%Y-%m-%d %H:%M:%S')
-        timestamp = x
-        y = []
-        x = []
-        #for i, name in enumerate(fridge.config['graph']):
-            # idx = self.sensor_names.index(name) + 1
-            # value = float(data_string_list[idx])
-        for i, name in enumerate(graph):
-            idx = labels.index(name.lower()) + 1
-            value = float(data[idx])
-            if np.isnan(value):
-                value = -1
-            y.append([value])
-            x.append([timestamp])
-        # print(x,y)
-        datastr = {'x': x, 'y': y}
-        # print('datastr', datastr)
-        socketio.emit('new_data', datastr) #  ,namespace='/')
+            # print('len of data', len(data))
+            app_logger.info(data_string)
+            x = datetime.datetime.fromtimestamp(float(data[0]))
+            # x = datetime.datetime.now()
+            x = x.strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = x
+            y = []
+            x = []
+            #for i, name in enumerate(fridge.config['graph']):
+                # idx = self.sensor_names.index(name) + 1
+                # value = float(data_string_list[idx])
+            for i, name in enumerate(graph):
+                idx = labels.index(name.lower()) + 1
+                value = float(data[idx])
+                if np.isnan(value):
+                    value = -1
+                y.append([value])
+                x.append([timestamp])
+            # print(x,y)
+            datastr = {'x': x, 'y': y}
+            # print('datastr', datastr)
+            socketio.emit('new_data', datastr) #  ,namespace='/')
+        elif state_subscriber in socks:
+            data_string = state_subscriber.recv_string()
+            print('fridge is in state:', data_string)
+            socketio.emit('fridge_state', data_string)
 
 @socketio.on('connect', namespace='/')
 def test_connect():
@@ -197,7 +201,7 @@ def plot():
                              name=curve['name'], mode=curve['mode'])
         data.append(trace)
     layout = go.Layout(title=plotTitle, \
-        yaxis={'title':'Random', 'type':'linear'}, xaxis={'title':'Time'})
+        yaxis={'title':'Random', 'type':'log'}, xaxis={'title':'Time'})
 
     # PlotlyJSONEncoder converts objects to their JSON equivalents
     figure=dict(data=data, layout=layout)
