@@ -2,6 +2,9 @@
 <!doctype html>
 <html>
 <head>
+    <script src="{{ url_for('static', filename='plotly.min.js') }}"> </script>
+    <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
+    <script src="{{ url_for('static', filename='snippet-javascript-console.min.js') }}"> </script>
     <style type="text/css">
         table{
             position: fixed;
@@ -44,16 +47,20 @@
         .size-12 {
             font-size: 18px;
         }
+        input[type=checkbox][disabled]{
+            outline:2px solid red;
+        }
     </style>
 </head>
 
 <body>
+    <div id="loading"><br> Loading </br>></div>
     <div class="row">
         <div class="column">
             <table id="data-table" > </table>
 
             <select id="state" class="state"
-                               onchange="console.log(this);console.log(this.selectedIndex);console.log(this.options[this.selectedIndex].text);">
+                               onchange="console.log(this);console.log(this.selectedIndex);change_state(this.options[this.selectedIndex].text);">
                  {% for state in states %}
                  <option> {{state}} </option>
                  {% endfor %}
@@ -63,11 +70,11 @@
                                     onclick="console.log(this.checked);">
                 Manual<br>
             <br>
-            <input type="checkbox"  id="pump"
+            <input type="checkbox"  id="pump" class="switch"
                                     onclick="console.log(this.checked);">
                 Pump On<br>
             <br>
-            <input type="checkbox"  id="switch"
+            <input type="checkbox"  id="switch" class="switch"
                                     onclick="console.log(this.checked);">
                 Switch On<br>
             <br>
@@ -92,8 +99,6 @@
     <!-- D3.js -->
     <!-- jQuery -->
     <!-- Plotly.js -->
-    <script src="{{ url_for('static', filename='plotly.min.js') }}"> </script>
-    <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
     <!-- 
     <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
@@ -111,7 +116,28 @@
                     eid.options[i].selected = true;
             }
         }
-
+        function update_manual(data) {
+            if (data=="manual") {
+                var eid = document.getElementById("manual");
+                eid.checked = true; 
+            } else {
+                var eid = document.getElementById("manual");
+                eid.checked = false; 
+                }
+            switches = document.getElementsByClassName("switch");
+            for (i=0; i<switches.length; i++) {
+                switches[i].disabled = !eid.checked;
+                }
+            }
+        function change_state(state) {
+            update_manual(state);
+            }
+        function update_switches() {
+            console.log('update_switches not implemented');
+        } 
+        function update_recycle_time() {
+            console.log('update_recycle_time not implemented');
+        } 
         var graphs = {{graphJSON | safe}};
         Plotly.plot('mainGraph',graphs.data,graphs.layout || {});
         // console.log(graphs)
@@ -131,6 +157,7 @@
         socket.on('fridge_state', function(data){
             console.log(data);
             setSelectBoxByText("state", data);
+            update_manual(data);
             });
         socket.on('new_data', function(data){
             //console.log("madeeee it");
@@ -161,16 +188,20 @@
             // update = {x:[data['x'][0]], y:[ data['y'][0] ]}
             // Plotly.extendTraces('mainGraph', update, [1]);
             Plotly.extendTraces('mainGraph', data, list);
-
+            update_switches();
         });
         mainGraph.on('plotly_relayout',
             function(eventdata){  
-                alert( 'ZOOM!' + '\n\n' +
-                    'Event data:' + '\n' + 
-                    JSON.stringify(eventdata) + '\n\n' +
-                    'x-axis start:' + eventdata['xaxis.range[0]'] + '\n' +
-                    'x-axis end:' + eventdata['xaxis.range[1]'] );
+                if ("xaxis.range[0]" in eventdata) {
+                    console.log(eventdata);
+                    alert( 'ZOOM!' + '\n\n' +
+                        'Event data:' + '\n' + 
+                        JSON.stringify(eventdata) + '\n\n' +
+                        'x-axis start:' + eventdata['xaxis.range[0]'] + '\n' +
+                        'x-axis end:' + eventdata['xaxis.range[1]'] );
+                    }
                 });
+    update_recycle_time()
     </script>
 
 </html>
