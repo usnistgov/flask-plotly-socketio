@@ -83,6 +83,7 @@ labels = [label.strip() for label in labels]
 for l in labels:
     print(len(l), l, type(l))
 graph = ['40K', '4K', '1K', 'switch', 'pump']
+table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs']
 
 def load_history():
     # global data_history, logfile_prefix
@@ -128,7 +129,7 @@ def load_history():
 
 
 def background_thread():
-    global labels
+    global labels, graph, table
     """send server generated events to clients."""
     socketio.sleep(1)
     while True:
@@ -160,7 +161,16 @@ def background_thread():
             # print(x,y)
             datastr = {'x': x, 'y': y}
             # print('datastr', datastr)
-            socketio.emit('new_data', datastr) #  ,namespace='/')
+            table_dict = {}
+            print('table', table)
+            for name in table:
+                idx = labels.index(name.lower()) + 1
+                value = float(data[idx])
+                if np.isnan(value):
+                    value = -1
+                table_dict[name] = value
+            alldata = {'graph': datastr, 'table': table_dict}
+            socketio.emit('new_data', alldata) #  ,namespace='/')
         elif state_subscriber in socks:
             data_string = state_subscriber.recv_string()
             print('fridge is in state:', data_string)
@@ -168,13 +178,14 @@ def background_thread():
 
 @socketio.on('connect', namespace='/')
 def test_connect():
-    global thread
+    global thread, graph, table
     if thread is None:
         thread =  socketio.start_background_task(target=background_thread)
         print('got to test_connect, thread started')
     print('passing sensor_names to client')
     # emit('my_response', {'data': 'Connected'}, namespace='/')
-    socketio.emit('connect', graph)  # , namespace='/')
+    data = {'graph': graph, 'table': table}
+    socketio.emit('connect', data)  # , namespace='/')
 
 @socketio.on('disconnect')  #, namespace='/')
 def test_disconnect():

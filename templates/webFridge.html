@@ -54,7 +54,7 @@
 </head>
 
 <body>
-    <div id="loading"><br> Loading </br>></div>
+    <div id="loading">Loading</div>
     <div class="row">
         <div class="column">
             <table id="data-table" > </table>
@@ -77,6 +77,12 @@
             <input type="checkbox"  id="switch" class="switch"
                                     onclick="console.log(this.checked);">
                 Switch On<br>
+            <br>
+            <div id="compressor_div"> 
+                <input type="checkbox"  id="compressor" class="switch"
+                    onclick="console.log(this.checked);">
+                Compressor<br>
+                </div>
             <br>
             Recycle Hour:
             <input type="number" class="size-12" value="2" min="-1" max="23">
@@ -147,11 +153,12 @@
         // Event handler for new connections.
         // The callback function is invoked when a connection with the
         // server is established.
-        var sensor_names;
+        var names;
         socket.on('connect', function(msg) {
             console.log('connected');
             console.log(msg);
-            sensor_names = msg;
+            console.log(typeof(msg));
+            names = msg;
             //socket.emit('my_event', {data: 'I\'m connected!'});
         });
         socket.on('fridge_state', function(data){
@@ -166,15 +173,21 @@
             table.innerHTML="";
             var idx = 0;
             // Update table
-            for (var name in sensor_names) {
+            var sensor_names = names['graph'];
+            var graph = data['graph'];
+            var table_data = data['table'];
+            var table_names = names['table'];
+            console.log(table_data);
+            console.log(table_names);
+            for (var name in table_names) {
                 var tr = document.createElement('tr');
                 var td = document.createElement('td');
                 td.width=75
-                td.innerHTML = sensor_names[name];
+                td.innerHTML = table_names[name];
                 tr.appendChild(td);
                 td = document.createElement('td');
                 td.align = "right"
-                td.innerHTML = parseFloat(data['y'][idx]).toFixed(3);
+                td.innerHTML = parseFloat(table_data[table_names[name]]).toFixed(3);
                 td.width=75
                 tr.appendChild(td);
                 table.appendChild(tr);
@@ -187,7 +200,7 @@
             }
             // update = {x:[data['x'][0]], y:[ data['y'][0] ]}
             // Plotly.extendTraces('mainGraph', update, [1]);
-            Plotly.extendTraces('mainGraph', data, list);
+            Plotly.extendTraces('mainGraph', graph, list);
             update_switches();
         });
         mainGraph.on('plotly_relayout',
@@ -202,6 +215,7 @@
                     }
                 });
     update_recycle_time()
+    document.getElementById("compressor_div").style.display = "none"
     </script>
 
 </html>
