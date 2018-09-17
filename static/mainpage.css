@@ -1,0 +1,30 @@
+        .state{
+            margin-left: 50px;
+        }
+
+        /* Create two equal columns that floats next to each other */
+        .column {
+            float: left;
+            width: 25%;
+            padding: 10px;
+        }
+        .column2 {
+            float: left;
+        }
+
+        /* Clear floats after the columns */
+        .row:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+        .checkboxes {
+           margin-left: 50px;
+        }
+        .size-12 {
+            font-size: 18px;
+        }
+        input[type=checkbox][disabled]{
+            outline:2px solid red;
+        }
+
