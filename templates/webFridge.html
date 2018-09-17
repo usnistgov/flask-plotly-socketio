@@ -5,8 +5,9 @@
     <script src="{{ url_for('static', filename='plotly.min.js') }}"> </script>
     <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
     <script src="{{ url_for('static', filename='snippet-javascript-console.min.js') }}"> </script>
+    <!---
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='mainpage.css') }}"> 
-   
+    --> 
     <style type="text/css"> 
         .datatable{
             border: 1px solid black;
@@ -17,6 +18,36 @@
             border: 1px solid black;
             border-collapse: collapse; 
         }
+        .state{
+            margin-left: 50px;
+        }
+
+        /* Create two equal columns that floats next to each other */
+        .column {
+            float: left;
+            width: 25%;
+            padding: 10px;
+        }
+        .column2 {
+            float: left;
+        }
+
+        /* Clear floats after the columns */
+        .row:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+        .checkboxes {
+           margin-left: 50px;
+        }
+        .size-12 {
+            font-size: 18px;
+        }
+        input[type=checkbox][disabled]{
+            outline:2px solid red;
+        }
+
     </style>
 </head>
 
@@ -25,7 +56,7 @@
     <div class="row">
         <div class="column">
             <table id="datatable" class="datatable"> </table>
-            <br>
+            <br> 
             <select id="state" class="state"
                                onchange="console.log(this);console.log(this.selectedIndex);change_state(this.options[this.selectedIndex].text);">
                  {% for state in states %}
@@ -38,11 +69,11 @@
                                     onclick="console.log(this.checked);">
                 Manual<br>
             <br>
-            <input type="checkbox"  id="pump" class="switch"
+            <input type="checkbox"  id="hp" class="switch"
                                     onclick="console.log(this.checked);">
                 Pump On<br>
             <br>
-            <input type="checkbox"  id="switch" class="switch"
+            <input type="checkbox"  id="hs" class="switch"
                                     onclick="console.log(this.checked);">
                 Switch On<br>
             <br>
@@ -103,8 +134,17 @@
         function change_state(state) {
             update_manual(state);
             }
-        function update_switches() {
-            console.log('update_switches not implemented');
+        function update_switches(table_names, table_data) {
+            switches = document.getElementsByClassName("switch");
+            for (i=0; i<switches.length; i++) {
+                switch_name = switches[i].id;
+                console.log(table_data['hp']);
+                if (table_data[switch_name]>0) {
+                   switches[i].checked = true;
+                } else {
+                   switches[i].checked = false;
+                }
+            }
         } 
         function update_recycle_time() {
             console.log('update_recycle_time not implemented');
@@ -126,11 +166,18 @@
             names = msg;
             //socket.emit('my_event', {data: 'I\'m connected!'});
         });
+        var currentstate;
         socket.on('fridge_state', function(data){
-            console.log(data);
-            setSelectBoxByText("state", data);
-            update_manual(data);
+            // console.log(data);
+            // console.log('currentstate', currentstate, currentstate!=data);
+            if (currentstate != data) {
+                currentstate = data;
+                console.log('Update state to :', currentstate);
+                setSelectBoxByText("state", data);
+                update_manual(data);
+                }
             });
+
         socket.on('new_data', function(data){
             //console.log("madeeee it");
             //console.log(data)
@@ -166,7 +213,7 @@
             // update = {x:[data['x'][0]], y:[ data['y'][0] ]}
             // Plotly.extendTraces('mainGraph', update, [1]);
             Plotly.extendTraces('mainGraph', graph, list);
-            update_switches();
+            update_switches(table_names, table_data);
         });
         mainGraph.on('plotly_relayout',
             function(eventdata){  
