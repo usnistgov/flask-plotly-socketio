@@ -213,6 +213,10 @@
             // Plotly.extendTraces('mainGraph', update, [1]);
             Plotly.extendTraces('mainGraph', graph, list);
             update_switches(table_names, table_data);
+            //  Update time
+            var d = new Date();
+            var n = d.toLocaleString();
+            document.getElementById("loading").innerHTML = 'Last update: '+n;
         });
         mainGraph.on('plotly_relayout',
             function(eventdata){  
@@ -225,6 +229,7 @@
                         'x-axis end:' + eventdata['xaxis.range[1]'] );
                     }
                 });
+
     update_recycle_time()
     document.getElementById("compressor_div").style.display = "none"
     </script>
