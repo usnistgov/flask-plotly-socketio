@@ -18,6 +18,9 @@ import fridge_machine
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
+print(parentdir)
+if 'piServer2' not in parentdir:
+    parentdir = os.path.join(parentdir, 'piServer2')
 sys.path.insert(0,parentdir)
 import data_logger
 import client
@@ -69,15 +72,14 @@ app.config['SECRET_KEY'] = 'secret!'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_mode=None)
 thread = None
-"""
-with open('2017-10-10-12-19-14.csv', 'r') as f:
-    labels = f.readline()
-    # labels = labels[1:]
-    labels = labels.split(',')
-    labels = [label.strip() for label in labels]
-    print('number of label', len(labels))
-"""
-labels = client.client('127.0.0.1', 50326, 'getlabels')
+
+if True:
+    with open('./logs/2017-10-10-12-19-14.csv', 'r') as f:
+        labels = f.readline()
+    LOG_PATH = './logs/'
+else:
+    labels = client.client('127.0.0.1', 50326, 'getlabels')
+    LOG_PATH = '../logs/'
 labels = labels.split(',')
 labels = [label.strip() for label in labels]
 for l in labels:
@@ -93,7 +95,7 @@ def load_history():
     #     prefix = ''
     #  Find previous log file
 
-    previous_log_filename = data_logger.getlast.getlast('../logs/', '*.csv')
+    previous_log_filename = data_logger.getlast.getlast(LOG_PATH, '*.csv')
     print('log_filename', previous_log_filename)
     #  Create logger object
     if '-' in previous_log_filename:
@@ -109,7 +111,7 @@ def load_history():
             pass
     else:
         logfile_prefix = ''
-    filename = '../logs/'+previous_log_filename
+    filename = LOG_PATH + previous_log_filename
     tail = subprocess.Popen(['tail', '-10000', filename],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, errors = tail.communicate()
@@ -179,9 +181,9 @@ def background_thread():
 @socketio.on('connect', namespace='/')
 def test_connect():
     global thread, graph, table
-    if thread is None:
-        thread =  socketio.start_background_task(target=background_thread)
-        print('got to test_connect, thread started')
+    # if thread is None:
+    #     thread =  socketio.start_background_task(target=background_thread)
+    #     print('got to test_connect, thread started')
     print('passing sensor_names to client')
     # emit('my_response', {'data': 'Connected'}, namespace='/')
     data = {'graph': graph, 'table': table}
@@ -234,7 +236,8 @@ def load_data(graph):
          for d in history[:, 0]]
  
     for idx, name in enumerate(graph):
-        idx = labels.index(name.lower()) + 2  # Could be 2 if there is human readable date
+        lower_labels = [label.lower() for label in labels]
+        idx = lower_labels.index(name.lower()) + 0  # Could be 2 if there is human readable date
         if len(history[:, 0]) > 1000:
             hdata = np.column_stack((history[:, 0], history[:, idx]))
             downsize = lttb.downsample(hdata, n_out=1000)
@@ -245,7 +248,7 @@ def load_data(graph):
         else:
             y = list(history[:, idx])
 
-        print('load_data:', name)
+        print('load_data:', name, idx)
         newdata.append({'x': x, 'y': y, 'type': 'scatter',
                             'mode':'markers+lines', 'name':'%s' % name})
     return newdata, filename
@@ -257,4 +260,5 @@ if __name__ == "__main__":
     ip, port_ = '0.0.0.0', '45000'
 
     # Start Flask app
-    socketio.run(app, host=ip, port=port_, debug=True, use_reloader=True)
+    # socketio.run(app, host=ip, port=port_, debug=True, use_reloader=True)
+    socketio.run(app, host=ip, port=port_)

@@ -2,10 +2,11 @@
 <!doctype html>
 <html>
 <head>
-    <script src="{{ url_for('static', filename='plotly.min.js') }}"> </script>
+    <script src="{{ url_for('static', filename='plotly-latest.min.js') }}"> </script>
     <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
-    <script src="{{ url_for('static', filename='snippet-javascript-console.min.js') }}"> </script>
     <!---
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="{{ url_for('static', filename='snippet-javascript-console.min.js') }}"> </script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='mainpage.css') }}"> 
     --> 
     <style type="text/css"> 
@@ -160,8 +161,8 @@
         var names;
         socket.on('connect', function(msg) {
             console.log('connected');
-            console.log(msg);
-            console.log(typeof(msg));
+            console.log('connected msg:', msg);
+            //console.log(typeof(msg));
             names = msg;
             //socket.emit('my_event', {data: 'I\'m connected!'});
         });
@@ -218,8 +219,10 @@
             var n = d.toLocaleString();
             document.getElementById("loading").innerHTML = 'Last update: '+n;
         });
+        update_recycle_time()
+        document.getElementById("compressor_div").style.display = "none"
         mainGraph.on('plotly_relayout',
-            function(eventdata){  
+            function(eventdata){
                 if ("xaxis.range[0]" in eventdata) {
                     console.log(eventdata);
                     alert( 'ZOOM!' + '\n\n' +
@@ -228,10 +231,7 @@
                         'x-axis start:' + eventdata['xaxis.range[0]'] + '\n' +
                         'x-axis end:' + eventdata['xaxis.range[1]'] );
                     }
-                });
-
-    update_recycle_time()
-    document.getElementById("compressor_div").style.display = "none"
+        });
     </script>
 
 </html>
