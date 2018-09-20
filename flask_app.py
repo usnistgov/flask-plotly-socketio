@@ -187,9 +187,9 @@ def background_thread():
 @socketio.on('connect', namespace='/')
 def test_connect():
     global thread, graph, table
-    if thread is None:
-        thread =  socketio.start_background_task(target=background_thread)
-        print('got to test_connect, thread started')
+    # if thread is None:
+    #     thread =  socketio.start_background_task(target=background_thread)
+    #     print('got to test_connect, thread started')
     print('passing sensor_names to client')
     # emit('my_response', {'data': 'Connected'}, namespace='/')
     data = {'graph': graph, 'table': table}
@@ -201,6 +201,11 @@ def test_disconnect():
 
 @socketio.on('my_event')  #, namespace='/')
 def my_event(message):
+    print('my_event', request.sid)
+    print('message', message)
+
+@socketio.on('switch')  #, namespace='/')
+def switch_event(message):
     print('my_event', request.sid)
     print('message', message)
 

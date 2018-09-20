@@ -71,11 +71,11 @@
                 Manual<br>
             <br>
             <input type="checkbox"  id="hp" class="switch"
-                                    onclick="console.log(this.checked);">
+                                    onclick="clicked_switch(this);">
                 Pump On<br>
             <br>
             <input type="checkbox"  id="hs" class="switch"
-                                    onclick="console.log(this.checked);">
+                                    onclick="clicked_switch(this);">
                 Switch On<br>
             <br>
             <div id="compressor_div"> 
@@ -145,7 +145,13 @@
                    switches[i].checked = false;
                 }
             }
-        } 
+        }
+        function clicked_switch(checkbox) {
+            console.log('clicked '+checkbox.id + ' state: '+checkbox.checked);
+            socket.emit('switch', {name: checkbox.id,
+                                state: checkbox.checked});
+
+        }
         function update_recycle_time() {
             console.log('update_recycle_time not implemented');
         } 
