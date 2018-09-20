@@ -73,7 +73,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_mode=None)
 thread = None
 
-if True:
+if False:
     with open('./logs/2017-10-10-12-19-14.csv', 'r') as f:
         labels = f.readline()
     LOG_PATH = './logs/'
@@ -181,9 +181,9 @@ def background_thread():
 @socketio.on('connect', namespace='/')
 def test_connect():
     global thread, graph, table
-    # if thread is None:
-    #     thread =  socketio.start_background_task(target=background_thread)
-    #     print('got to test_connect, thread started')
+    if thread is None:
+        thread =  socketio.start_background_task(target=background_thread)
+        print('got to test_connect, thread started')
     print('passing sensor_names to client')
     # emit('my_response', {'data': 'Connected'}, namespace='/')
     data = {'graph': graph, 'table': table}
@@ -237,7 +237,7 @@ def load_data(graph):
  
     for idx, name in enumerate(graph):
         lower_labels = [label.lower() for label in labels]
-        idx = lower_labels.index(name.lower()) + 0  # Could be 2 if there is human readable date
+        idx = lower_labels.index(name.lower()) + 2  # Could be 2 if there is human readable date
         if len(history[:, 0]) > 1000:
             hdata = np.column_stack((history[:, 0], history[:, idx]))
             downsize = lttb.downsample(hdata, n_out=1000)
