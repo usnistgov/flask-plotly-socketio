@@ -43,7 +43,7 @@ import plotly.plotly as py
 import plotly.graph_objs as go
 import json
 from threading import Thread, Lock
-
+import preallocate
 
 logzero.loglevel(logging.INFO)
 app_logger = logger
@@ -86,7 +86,8 @@ for l in labels:
     print(len(l), l, type(l))
 graph = ['40K', '4K', '1K', 'switch', 'pump']
 table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs']
-
+DATA = None
+SIZE = 100000
 def load_history():
     # global data_history, logfile_prefix
     # if 'logfile_prefix' in fridge.config['logfile_prefix']:
@@ -120,18 +121,21 @@ def load_history():
     history_start = 100000
     history = deque(iter(output.decode().splitlines()), history_start)
     data_history = np.genfromtxt(history, invalid_raise=False, delimiter=',')
-    #print(type(data_history), data_history.shape)
-
+    print(type(data_history), data_history.shape)
+    data = preallocate.PreallocatedArray(np.zeros((SIZE, data_history.shape[1])))
+    data[:data_history.shape[0], :data_history.shape[1]] = data_history
+    data.length = data_history.shape[0]
     try:
         last_point = history.pop()
     except:
         last_point = None
     app_logger.info('last_point, %r' % last_point)
-    return data_history, filename
+    return data, filename
 
+DATA, FILENAME = load_history()
 
 def background_thread():
-    global labels, graph, table
+    global labels, graph, table, DATA
     """send server generated events to clients."""
     socketio.sleep(1)
     while True:
@@ -140,6 +144,8 @@ def background_thread():
         # print('poll socks', socks)
         if subscriber in socks:
             data_string = subscriber.recv_string()
+            new_row = np.fromstring(data_string, sep=',')
+            DATA.append_row(new_row)
             # print('subscriber message:', data_string)
             data = data_string.split(',')
             # print('len of data', len(data))
@@ -181,9 +187,9 @@ def background_thread():
 @socketio.on('connect', namespace='/')
 def test_connect():
     global thread, graph, table
-    # if thread is None:
-    #     thread =  socketio.start_background_task(target=background_thread)
-    #     print('got to test_connect, thread started')
+    if thread is None:
+        thread =  socketio.start_background_task(target=background_thread)
+        print('got to test_connect, thread started')
     print('passing sensor_names to client')
     # emit('my_response', {'data': 'Connected'}, namespace='/')
     data = {'graph': graph, 'table': table}
@@ -200,6 +206,7 @@ def my_event(message):
 
 @app.route("/", methods=['GET', 'POST'])
 def plot():
+    global DATA
     plotTitle = 'Flask socketio plotly test app'
 
     # Updates the data for the table
@@ -230,7 +237,10 @@ def plot():
 
 
 def load_data(graph):
-    history, filename = load_history()
+    print('building graphs')
+    # history, filename = load_history()
+    history = DATA
+    filename = FILENAME
     newdata = []
     x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
          for d in history[:, 0]]
@@ -251,6 +261,7 @@ def load_data(graph):
         print('load_data:', name, idx)
         newdata.append({'x': x, 'y': y, 'type': 'scatter',
                             'mode':'markers+lines', 'name':'%s' % name})
+    print('done building graphs')
     return newdata, filename
 
 
