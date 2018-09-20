@@ -66,6 +66,8 @@ poller = zmq.Poller()
 poller.register(subscriber, zmq.POLLIN)
 poller.register(state_subscriber, zmq.POLLIN)
 
+fridge_client = context.socket(zmq.REQ)
+fridge_client.bind("tcp://*:5555")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -208,11 +210,18 @@ def my_event(message):
 def switch_event(message):
     print('my_event', request.sid)
     print('switch message', type(message), message)
+    client_message = ' '.join('set_heater', message['name'], message['state'])
+    print('client_message', client_message)
+    fridge_client.send_string(client_message)
+    msg = fridge_client.recv_string()
 
 @socketio.on('state')  #, namespace='/')
 def switch_event(message):
     print('my_event', request.sid)
     print('state message', type(message), message)
+    #  This sends the data... should see if timesout...
+    fridge_client.send_string('set_state '+message)
+    msg = fridge_client.recv_string()
 
 @app.route("/", methods=['GET', 'POST'])
 def plot():
