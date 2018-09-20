@@ -207,7 +207,12 @@ def my_event(message):
 @socketio.on('switch')  #, namespace='/')
 def switch_event(message):
     print('my_event', request.sid)
-    print('message', message)
+    print('switch message', type(message), message)
+
+@socketio.on('state')  #, namespace='/')
+def switch_event(message):
+    print('my_event', request.sid)
+    print('state message', type(message), message)
 
 @app.route("/", methods=['GET', 'POST'])
 def plot():

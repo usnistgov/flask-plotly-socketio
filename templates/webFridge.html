@@ -59,7 +59,7 @@
             <table id="datatable" class="datatable"> </table>
             <br> 
             <select id="state" class="state"
-                               onchange="console.log(this);console.log(this.selectedIndex);change_state(this.options[this.selectedIndex].text);">
+                               onchange="select_state(this);">
                  {% for state in states %}
                  <option> {{state}} </option>
                  {% endfor %}
@@ -67,7 +67,7 @@
             <br>
             <div class="checkboxes">
             <input type="checkbox"  id="manual"
-                                    onclick="console.log(this.checked);">
+                                    onclick="clicked_switch(this);">
                 Manual<br>
             <br>
             <input type="checkbox"  id="hp" class="switch"
@@ -119,6 +119,14 @@
                     eid.options[i].selected = true;
             }
         }
+        function select_state(data) {
+            // console.log(data);
+            // console.log(data.selectedIndex);
+            new_state = data.options[data.selectedIndex].text;
+            console.log('selected state: '+new_state);
+            update_manual(new_state);
+            socket.emit('state', new_state);
+        }
         function update_manual(data) {
             if (data=="manual") {
                 var eid = document.getElementById("manual");
@@ -148,8 +156,16 @@
         }
         function clicked_switch(checkbox) {
             console.log('clicked '+checkbox.id + ' state: '+checkbox.checked);
-            socket.emit('switch', {name: checkbox.id,
-                                state: checkbox.checked});
+            if (checkbox.id == 'manual') {
+                setSelectBoxByText("state", 'manual');
+                socket.emit('state', 'manual');
+                update_manual('manual');
+                //  Force the checkbox to be true all the time
+                checkbox.checked = true
+            } else {
+                socket.emit('switch', {name: checkbox.id,
+                                    state: checkbox.checked});
+            }
 
         }
         function update_recycle_time() {
@@ -226,6 +242,8 @@
             document.getElementById("loading").innerHTML = 'Last update: '+n;
         });
         update_recycle_time()
+        setSelectBoxByText('state', 'manual');
+        update_manual('manual');
         document.getElementById("compressor_div").style.display = "none"
         mainGraph.on('plotly_relayout',
             function(eventdata){
@@ -238,6 +256,9 @@
                         'x-axis end:' + eventdata['xaxis.range[1]'] );
                     }
         });
+
+        // var eid = document.getElementById("hp");
+        // eid.checked = true;
     </script>
 
 </html>
