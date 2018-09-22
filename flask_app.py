@@ -36,7 +36,7 @@ except ImportError:
         pass
 
 #*** to run this app you need pip install Flask and Flask-SocketIO and eventlet and ***#
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
 from flask_socketio import SocketIO, emit
 import plotly
 import plotly.plotly as py
@@ -236,6 +236,14 @@ def switch_event(message):
     #  This sends the data... should see if timesout...
     fridge_client.send_string('set_state '+message)
     msg = fridge_client.recv_string()
+
+@app.route("/logfile/")
+def download_logfile():
+    try:
+        print('sending', os.path.basename(FILENAME))
+        return send_file(FILENAME, as_attachment=True, attachment_filename=os.path.basename(FILENAME))
+    except Exception as e:
+        return str(e)
 
 @app.route("/", methods=['GET', 'POST'])
 def plot():
