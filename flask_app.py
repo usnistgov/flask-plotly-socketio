@@ -67,7 +67,7 @@ poller.register(subscriber, zmq.POLLIN)
 poller.register(state_subscriber, zmq.POLLIN)
 
 fridge_client = context.socket(zmq.REQ)
-fridge_client.bind("tcp://*:5555")
+fridge_client.connect("tcp://localhost:5555")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -87,7 +87,7 @@ labels = [label.strip() for label in labels]
 for l in labels:
     print(len(l), l, type(l))
 graph = ['40K', '4K', '1K', 'switch', 'pump']
-table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs']
+table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs', 'relays']
 DATA = None
 SIZE = 100000
 def load_history():
@@ -146,12 +146,10 @@ def background_thread():
         # print('poll socks', socks)
         if subscriber in socks:
             data_string = subscriber.recv_string()
-            new_row = np.fromstring(data_string, sep=',')
-            DATA.append_row(new_row)
             # print('subscriber message:', data_string)
             data = data_string.split(',')
             # print('len of data', len(data))
-            app_logger.info(data_string)
+            app_logger.debug(data_string)
             x = datetime.datetime.fromtimestamp(float(data[0]))
             # x = datetime.datetime.now()
             x = x.strftime('%Y-%m-%d %H:%M:%S')
@@ -172,7 +170,6 @@ def background_thread():
             datastr = {'x': x, 'y': y}
             # print('datastr', datastr)
             table_dict = {}
-            print('table', table)
             for name in table:
                 idx = labels.index(name.lower()) + 1
                 value = float(data[idx])
@@ -181,9 +178,18 @@ def background_thread():
                 table_dict[name] = value
             alldata = {'graph': datastr, 'table': table_dict}
             socketio.emit('new_data', alldata) #  ,namespace='/')
+            time, data = data_string.split(',', 1)
+            new_row = np.fromstring(data_string, sep=',')
+            new_row2 = np.zeros(len(new_row)+1)
+            new_row2[0] = new_row[0]
+            new_row2[1] = float('nan')
+            new_row2[2:] = new_row[1:]
+            DATA.append_row(new_row2)
+            # print('background DATA.shape', DATA.shape, DATA.length)
+
         elif state_subscriber in socks:
             data_string = state_subscriber.recv_string()
-            print('fridge is in state:', data_string)
+            app_logger.debug('fridge is in state: %s' % data_string)
             socketio.emit('fridge_state', data_string)
 
 @socketio.on('connect', namespace='/')
@@ -210,7 +216,8 @@ def my_event(message):
 def switch_event(message):
     print('my_event', request.sid)
     print('switch message', type(message), message)
-    client_message = ' '.join('set_heater', message['name'], message['state'])
+    client_message = ' '.join(['set_heater', message['name'],
+            '%s' % message['state']])
     print('client_message', client_message)
     fridge_client.send_string(client_message)
     msg = fridge_client.recv_string()
@@ -256,6 +263,8 @@ def plot():
 
 
 def load_data(graph):
+    global DATA
+    print('load_data DATA.shape', DATA.shape, DATA.length)
     print('building graphs')
     # history, filename = load_history()
     history = DATA
@@ -263,7 +272,7 @@ def load_data(graph):
     newdata = []
     x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
          for d in history[:, 0]]
- 
+
     for idx, name in enumerate(graph):
         lower_labels = [label.lower() for label in labels]
         idx = lower_labels.index(name.lower()) + 2  # Could be 2 if there is human readable date
@@ -290,5 +299,6 @@ if __name__ == "__main__":
     ip, port_ = '0.0.0.0', '45000'
 
     # Start Flask app
-    # socketio.run(app, host=ip, port=port_, debug=True, use_reloader=True)
-    socketio.run(app, host=ip, port=port_)
+    #  socketio.run(app, host=ip, port=port_, debug=True, use_reloader=True)
+    socketio.run(app, host=ip, port=port_, debug=True, use_reloader=False)
+    # socketio.run(app, host=ip, port=port_)

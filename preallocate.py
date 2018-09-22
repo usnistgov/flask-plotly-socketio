@@ -30,7 +30,8 @@ class PreallocatedArray(np.ndarray):
         return self.length
 
     def append_row(self, data):
-        if len(data.shape) == 1:
+        if len(self.shape) == 1:
+            print(" Can not append a row")
             #  Can not append a row, don't do anything
             return
         if self.shape[0] == self.length:
@@ -38,8 +39,10 @@ class PreallocatedArray(np.ndarray):
             self.start_idx += 1
             self.start_idx %= self.length
         else:
+            # print(self.length)
             self[self.length, :] = data
             self.length += 1
+            # print('done append', self.length)
 
     def __getitem__(self, i):
         # print(type(i), i)
