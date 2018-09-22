@@ -212,6 +212,13 @@ def my_event(message):
     print('my_event', request.sid)
     print('message', message)
 
+@socketio.on('set_recycle_hour')  #, namespace='/')
+def set_recycle_hour(message):
+    print('my_event', request.sid)
+    print('recycle_hour message', type(message), message)
+    fridge_client.send_string('set_recycle_hour '+message)    
+    msg = fridge_client.recv_string()
+
 @socketio.on('switch')  #, namespace='/')
 def switch_event(message):
     print('my_event', request.sid)
@@ -246,8 +253,10 @@ def plot():
         trace = go.Scattergl(x=curve['x'], y=curve['y'],
                              name=curve['name'], mode=curve['mode'])
         data.append(trace)
-    layout = go.Layout(title=plotTitle, \
-        yaxis={'title':'Random', 'type':'log'}, xaxis={'title':'Time'})
+    layout = go.Layout(  # title=plotTitle, \
+        yaxis={'title':'Random', 'type':'log'}, xaxis={'title':'Time'},
+        margin={ 'l': 50, 'r': 50, 'b': 50, 't': 0, 'pad': 0 },
+        )
 
     # PlotlyJSONEncoder converts objects to their JSON equivalents
     figure=dict(data=data, layout=layout)
@@ -256,9 +265,21 @@ def plot():
     # try to connect to clients
     print('try to connect to clients')
     test_connect()
+    client_message = 'get_recycle_hour'
+    fridge_client.send_string(client_message)
+    recycle_hour = int(float(fridge_client.recv_string()))
 
+    client_message = 'get_next_recycle_time'
+    fridge_client.send_string(client_message)
+    next_recycle_time = eval(fridge_client.recv_string())
+    next_recycle_time = next_recycle_time.strftime('%y-%m-%d %H:%M:%S')
+
+    # recycle_hour = 3
+    # next_recycle_time = 'fix me'
     return render_template('webFridge.html', graphJSON=graphJSON,
                            states = fridge_machine.Fridge.fridge_states,
+                           recycle_hour = recycle_hour, 
+                           next_recycle_time = next_recycle_time,
                            async_mode=socketio.async_mode)
 
 
@@ -296,7 +317,10 @@ def load_data(graph):
 
 
 if __name__ == "__main__":
-    ip, port_ = '0.0.0.0', '45000'
+    if len(sys.argv) > 1:
+        ip, port_ = '0.0.0.0', sys.argv[1]
+    else:
+        ip, port_ = '0.0.0.0', '50000'
 
     # Start Flask app
     #  socketio.run(app, host=ip, port=port_, debug=True, use_reloader=True)

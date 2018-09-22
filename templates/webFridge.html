@@ -2,6 +2,7 @@
 <!doctype html>
 <html>
 <head>
+    <title>flask webFridge</title>
     <script src="{{ url_for('static', filename='plotly-latest.min.js') }}"> </script>
     <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
     <!---
@@ -10,6 +11,7 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='mainpage.css') }}">
     -->
     <style type="text/css">
+        * {margin: 0; padding: 0}
         .datatable{
             border: 1px solid black;
             border-collapse: collapse;
@@ -23,7 +25,6 @@
             margin-left: 50px;
         }
 
-        /* Create two equal columns that floats next to each other */
         .column {
             float: left;
             width: 25%;
@@ -31,6 +32,7 @@
         }
         .column2 {
             float: left;
+            width: 60%; 
         }
 
         /* Clear floats after the columns */
@@ -85,15 +87,19 @@
                 </div>
             <br>
             Recycle Hour:
-            <input type="number" class="size-12" value="2" min="-1" max="23">
+            <input type="number" class="size-12" value="{{recycle_hour}}" min="-1" max="23" onchange="socket.emit('set_recycle_hour', this.value);">
             <div id="next">
-                Next Recycle Time: "Need to fix this"
+                Next Time: {{next_recycle_time}}
             </div>
 
             </div>
         </div>
         <div class="column2">
+            <h4 style="margin-bottom=0"> Room: {{room}}  Name: {{name}}</h4>
             <div id="mainGraph" class="mainGraph" > </div>
+            <div id="console" class="console">
+                <textarea style="color:white;width:90%;margin:0px;background:black;height:100px" class="TextInput" autocomplete="off" readonly="true" onclick="" onchange="console.log('console change');"> Hello
+            </textarea>
         </div>
     </div>
 
@@ -239,7 +245,7 @@
             //  Update time
             var d = new Date();
             var n = d.toLocaleString();
-            document.getElementById("loading").innerHTML = 'Last update: '+n;
+            document.getElementById("loading").innerHTML = ''+n;
         });
         update_recycle_time()
         setSelectBoxByText('state', 'manual');
