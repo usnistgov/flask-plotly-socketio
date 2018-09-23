@@ -186,7 +186,7 @@
             console.log('update_recycle_time not implemented');
         }
         var graphs = {{graphJSON | safe}};
-        Plotly.plot('mainGraph',graphs.data,graphs.layout || {});
+        Plotly.newPlot('mainGraph',graphs.data,graphs.layout || {});
         // console.log(graphs)
 
         // Connect to the Socket.IO server.
@@ -261,8 +261,9 @@
         document.getElementById("compressor_div").style.display = "none"
         mainGraph.on('plotly_relayout',
             function(eventdata){
+                console.log(eventdata);
                 if ("xaxis.range[0]" in eventdata) {
-                    console.log(eventdata);
+                    socket.emit('zoom', eventdata);
                     /*
                     alert( 'ZOOM!' + '\n\n' +
                         'Event data:' + '\n' +

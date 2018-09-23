@@ -212,6 +212,17 @@ def my_event(message):
     print('my_event', request.sid)
     print('message', message)
 
+@socketio.on('zoom')  #, namespace='/')
+def my_event(message):
+    print('zoom', request.sid)
+    print('message', type(message), message)
+    format_str = '%Y-%m-%d %H:%M:%S.%f'
+    start = datetime.datetime.strptime(message['xaxis.range[0]'], format_str)
+    stop = datetime.datetime.strptime(message['xaxis.range[0]'], format_str)
+    start = time.mktime(start.timetuple())
+    stop = time.mktime(stop.timetuple())
+    print('timestamps for range', start, stop)
+
 @socketio.on('set_recycle_hour')  #, namespace='/')
 def set_recycle_hour(message):
     print('my_event', request.sid)
@@ -280,7 +291,7 @@ def plot():
     client_message = 'get_next_recycle_time'
     fridge_client.send_string(client_message)
     next_recycle_time = eval(fridge_client.recv_string())
-    next_recycle_time = next_recycle_time.strftime('%y-%m-%d %H:%M:%S')
+    next_recycle_time = next_recycle_time.strftime('%Y-%m-%d %H:%M:%S')
 
     # recycle_hour = 3
     # next_recycle_time = 'fix me'
