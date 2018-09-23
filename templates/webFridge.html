@@ -21,13 +21,13 @@
             border-collapse: collapse;
         }
         .state{
-            margin-left: 50px;
+            margin-left: 0px;
         }
 
         .column {
-            float: left;
-            width: 25%;
-            padding: 10px;
+            float: left; 
+            width: 300px;
+            padding: 0px;
         }
         .column2 {
             float: left;
@@ -49,22 +49,18 @@
         input[type=checkbox][disabled]{
             outline:2px solid red;
         }
-
+        .js-plotly-plot .plotly .modebar {
+            left: 50%;
+            transform: translateX(-50%);
+        }
     </style>
 </head>
 
 <body>
-    <div id="loading">Loading</div>
     <div class="row">
         <div class="column">
+            <div id="loading" style="margin-left:50px">Loading</div>
             <table id="datatable" class="datatable"> </table>
-            <br>
-            <select id="state" class="state"
-                               onchange="select_state(this);">
-                 {% for state in states %}
-                 <option> {{state}} </option>
-                 {% endfor %}
-            </select>
             <br>
             <div class="checkboxes">
             <input type="checkbox"  id="manual"
@@ -84,12 +80,23 @@
                     onclick="console.log(this.checked);">
                 Compressor<br>
                 </div>
+            <select id="state" class="state"
+                               onchange="select_state(this);">
+                 {% for state in states %}
+                 <option> {{state}} </option>
+                 {% endfor %}
+            </select>
             <br>
+            <br>
+            <div> 
             Recycle Hour:
             <input type="number" class="size-12" value="{{recycle_hour}}" min="-1" max="23" onchange="socket.emit('set_recycle_hour', this.value);">
+            </div>
+            <br>
             <div id="next">
                 Next Time: {{next_recycle_time}}
             </div>
+            <br>
             <div id="download">
             <a href="/logfile"> Download log </a>
             </div>
@@ -256,11 +263,13 @@
             function(eventdata){
                 if ("xaxis.range[0]" in eventdata) {
                     console.log(eventdata);
+                    /*
                     alert( 'ZOOM!' + '\n\n' +
                         'Event data:' + '\n' +
                         JSON.stringify(eventdata) + '\n\n' +
                         'x-axis start:' + eventdata['xaxis.range[0]'] + '\n' +
                         'x-axis end:' + eventdata['xaxis.range[1]'] );
+                    */
                     }
         });
 

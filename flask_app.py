@@ -115,7 +115,7 @@ def load_history():
     else:
         logfile_prefix = ''
     filename = LOG_PATH + previous_log_filename
-    tail = subprocess.Popen(['tail', '-10000', filename],
+    tail = subprocess.Popen(['tail', '-100000', filename],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, errors = tail.communicate()
     # with open(filename, 'r') as f:
@@ -263,7 +263,7 @@ def plot():
         data.append(trace)
     layout = go.Layout(  # title=plotTitle, \
         yaxis={'title':'Random', 'type':'log'}, xaxis={'title':'Time'},
-        margin={ 'l': 50, 'r': 50, 'b': 50, 't': 0, 'pad': 0 },
+        margin={ 'l': 50, 'r': 50, 'b': 50, 't': 5, 'pad': 0 },
         )
 
     # PlotlyJSONEncoder converts objects to their JSON equivalents
