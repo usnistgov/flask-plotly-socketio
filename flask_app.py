@@ -74,7 +74,7 @@ app.config['SECRET_KEY'] = 'secret!'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_mode=None)
 thread = None
-TESTING = True
+TESTING = False
 if TESTING:
     with open('./logs/2017-10-10-12-19-14.csv', 'r') as f:
         labels = f.readline()
@@ -198,10 +198,9 @@ def background_thread():
 @socketio.on('connect', namespace='/')
 def test_connect():
     global thread, graph, table
-    # if thread is None:
-    #     thread =  socketio.start_background_task(target=background_thread)
-    #     print('got to test_connect, thread started')
-    # emit('my_response', {'data': 'Connected'}, namespace='/')
+    if thread is None:
+        thread =  socketio.start_background_task(target=background_thread)
+        print('got to test_connect, thread started')
     print('Trying to connect to client')
     data = {'graph': graph, 'table': table, 'log_filename': os.path.basename(FILENAME)}
     socketio.emit('connect', data)  # , namespace='/')
@@ -345,7 +344,7 @@ def load_data(graph, data_slice=None):
         start = np.where(history[:,0]>data_slice[0])[0][0]
         stop = np.where(history[:,0]<data_slice[1])[0][-1]
         data_slice = range(start, stop)
-        print('data_slice:', data_slice, stop-start)
+        # print('data_slice:', data_slice, stop-start)
 
     x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
          for d in history[data_slice, 0]]

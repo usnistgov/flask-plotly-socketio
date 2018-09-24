@@ -2,11 +2,11 @@
 <html>
 <head>
     <title>flask webFridge</title>
-    <script src="{{ url_for('static', filename='plotly-latest.min.js') }}"> </script>
-    <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
-    <script src="{{ url_for('static', filename='snippet-javascript-console.min.js') }}"> </script>
-    <!---
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
+    <!---
+    <script src="{{ url_for('static', filename='plotly-latest.min.js') }}"> </script>
+    <script src="{{ url_for('static', filename='snippet-javascript-console.min.js') }}"> </script>
     <script src="{{ url_for('static', filename='snippet-javascript-console.min.js') }}"> </script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='mainpage.css') }}">
     -->
@@ -263,6 +263,7 @@
             }
             // update = {x:[data['x'][0]], y:[ data['y'][0] ]}
             // Plotly.extendTraces('mainGraph', update, [1]);
+            console.log(graph['x'][0][0])
             Plotly.extendTraces('mainGraph', graph, list);
             update_switches(table_names, table_data);
             //  Update time
