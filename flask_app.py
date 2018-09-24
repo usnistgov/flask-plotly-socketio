@@ -142,6 +142,7 @@ DATA, FILENAME = load_history()
 def background_thread():
     global labels, graph, table, DATA
     """send server generated events to clients."""
+    print('starting background thread')
     socketio.sleep(1)
     while True:
         socketio.sleep(1)
@@ -200,8 +201,7 @@ def test_connect():
     global thread, graph, table
     if thread is None:
         thread =  socketio.start_background_task(target=background_thread)
-        print('got to test_connect, thread started')
-    print('Trying to connect to client')
+    print("sending names to client")
     data = {'graph': graph, 'table': table, 'log_filename': os.path.basename(FILENAME)}
     socketio.emit('connect', data)  # , namespace='/')
 
