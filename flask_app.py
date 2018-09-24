@@ -74,20 +74,23 @@ app.config['SECRET_KEY'] = 'secret!'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_mode=None)
 thread = None
-
-if False:
+TESTING = True
+if TESTING:
     with open('./logs/2017-10-10-12-19-14.csv', 'r') as f:
         labels = f.readline()
     LOG_PATH = './logs/'
+    table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs']
+    LABEL_OFFSET = 0
 else:
     labels = client.client('127.0.0.1', 50326, 'getlabels')
     LOG_PATH = '../logs/'
+    table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs', 'relays']
+    LABEL_OFFSET = 2
 labels = labels.split(',')
 labels = [label.strip() for label in labels]
 for l in labels:
     print(len(l), l, type(l))
 graph = ['40K', '4K', '1K', 'switch', 'pump']
-table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs', 'relays']
 DATA = None
 SIZE = 100000
 def load_history():
@@ -195,12 +198,12 @@ def background_thread():
 @socketio.on('connect', namespace='/')
 def test_connect():
     global thread, graph, table
-    if thread is None:
-        thread =  socketio.start_background_task(target=background_thread)
-        print('got to test_connect, thread started')
-    print('passing sensor_names to client')
+    # if thread is None:
+    #     thread =  socketio.start_background_task(target=background_thread)
+    #     print('got to test_connect, thread started')
     # emit('my_response', {'data': 'Connected'}, namespace='/')
-    data = {'graph': graph, 'table': table}
+    print('Trying to connect to client')
+    data = {'graph': graph, 'table': table, 'log_filename': os.path.basename(FILENAME)}
     socketio.emit('connect', data)  # , namespace='/')
 
 @socketio.on('disconnect')  #, namespace='/')
@@ -212,16 +215,41 @@ def my_event(message):
     print('my_event', request.sid)
     print('message', message)
 
+@socketio.on('unzoom')  #, namespace='/')
+def unzoom(message):
+    global graph
+
+    graphJSON = build_graphjson()
+    socketio.emit('zoom_graph', graphJSON)
+
 @socketio.on('zoom')  #, namespace='/')
-def my_event(message):
-    print('zoom', request.sid)
-    print('message', type(message), message)
+def zoom(message):
+    global graph
+    # print('zoom', request.sid)
+    # print('message', type(message), message)
     format_str = '%Y-%m-%d %H:%M:%S.%f'
     start = datetime.datetime.strptime(message['xaxis.range[0]'], format_str)
-    stop = datetime.datetime.strptime(message['xaxis.range[0]'], format_str)
+    stop = datetime.datetime.strptime(message['xaxis.range[1]'], format_str)
     start = time.mktime(start.timetuple())
     stop = time.mktime(stop.timetuple())
-    print('timestamps for range', start, stop)
+    print('timestamps for range', start, stop, stop-start)
+
+    newdata, filename = load_data(graph, data_slice = (start, stop))
+    data=[]
+    figure={}
+    for curve in newdata:
+        trace = go.Scattergl(x=curve['x'], y=curve['y'],
+                             name=curve['name'], mode=curve['mode'])
+        data.append(trace)
+    layout = go.Layout(  # title=plotTitle, \
+        yaxis={'title':'Temperatures', 'type':'log'}, xaxis={'title':'Time'},
+        margin={ 'l': 50, 'r': 50, 'b': 50, 't': 5, 'pad': 0 },
+        )
+
+    # PlotlyJSONEncoder converts objects to their JSON equivalents
+    figure=dict(data=data, layout=layout)
+    graphJSON = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
+    socketio.emit('zoom_graph', graphJSON)
 
 @socketio.on('set_recycle_hour')  #, namespace='/')
 def set_recycle_hour(message):
@@ -258,11 +286,101 @@ def download_logfile():
 
 @app.route("/", methods=['GET', 'POST'])
 def plot():
-    global DATA
+    global DATA, graph
     plotTitle = 'Flask socketio plotly test app'
+    graphJSON = build_graphjson()
+    # # Updates the data for the table
+    # newdata, filename = load_data(graph)
+    # # Create a traces and layout to plot
+    # print('filename', filename)
+    # data=[]
+    # figure={}
+    # # for j in range(num_curves):
+    # for curve in newdata:
+    #     trace = go.Scattergl(x=curve['x'], y=curve['y'],
+    #                          name=curve['name'], mode=curve['mode'])
+    #     data.append(trace)
+    # layout = go.Layout(  # title=plotTitle, \
+    #     yaxis={'title':'Temperatures', 'type':'log'}, xaxis={'title':'Time'},
+    #     margin={ 'l': 50, 'r': 50, 'b': 50, 't': 5, 'pad': 0 },
+    #     )
+    #
+    # # PlotlyJSONEncoder converts objects to their JSON equivalents
+    # figure=dict(data=data, layout=layout)
+    # graphJSON = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
 
-    # Updates the data for the table
-    newdata, filename = load_data(graph)
+    # try to connect to clients
+    print('try to connect to clients')
+    test_connect()
+    if not TESTING:
+        client_message = 'get_recycle_hour'
+        fridge_client.send_string(client_message)
+        recycle_hour = int(float(fridge_client.recv_string()))
+
+        client_message = 'get_next_recycle_time'
+        fridge_client.send_string(client_message)
+        next_recycle_time = eval(fridge_client.recv_string())
+        next_recycle_time = next_recycle_time.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        recycle_hour = 3
+        next_recycle_time = 'fix me'
+    return render_template('webFridge.html', graphJSON=graphJSON,
+                           states = fridge_machine.Fridge.fridge_states,
+                           recycle_hour = recycle_hour, 
+                           next_recycle_time = next_recycle_time,
+                           async_mode=socketio.async_mode)
+
+
+def load_data(graph, data_slice=None):
+    global DATA
+    print('load_data DATA.shape', DATA.shape, DATA.length)
+    print('building graphs')
+    # history, filename = load_history()
+    history = DATA
+    filename = FILENAME
+    newdata = []
+    if data_slice is None:
+        data_slice = range(DATA.length)
+    else:
+        start = np.where(history[:,0]>data_slice[0])[0][0]
+        stop = np.where(history[:,0]<data_slice[1])[0][-1]
+        data_slice = range(start, stop)
+        print('data_slice:', data_slice, stop-start)
+
+    x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
+         for d in history[data_slice, 0]]
+    use_lttb = len(x) > 1000
+    for idx, name in enumerate(graph):
+        lower_labels = [label.lower() for label in labels]
+        idx = lower_labels.index(name.lower()) + LABEL_OFFSET # Could be 2 if there is human readable date
+        # y = history[data_slice, idx]
+        # print('y', y)
+        # if len(history[data_slice, 0]) > 1000:
+        if use_lttb:
+            print('data_slice len', len(data_slice))
+            hdata = np.column_stack((history[data_slice, 0], history[data_slice, idx]))
+            print('hdata.shape', hdata.shape)
+            downsize = lttb.downsample(hdata, n_out=1000)
+            assert downsize.shape == (1000, 2)
+            x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
+                    for d in downsize[:, 0]]
+            y = list(downsize[:,1])
+        else:
+            y = list(history[data_slice, idx])
+
+        print('load_data:', name, idx)
+        newdata.append({'x': x, 'y': y, 'type': 'scatter',
+                            'mode':'markers+lines', 'name':'%s' % name})
+    print('done building graphs')
+    return newdata, filename
+
+def build_graphjson(data_slice=None):
+
+    global graph
+    if data_slice is None:
+        newdata, filename = load_data(graph)
+    else:
+        newdata, filename = load_data(graph, data_slice)
     # Create a traces and layout to plot
     print('filename', filename)
     data=[]
@@ -273,7 +391,7 @@ def plot():
                              name=curve['name'], mode=curve['mode'])
         data.append(trace)
     layout = go.Layout(  # title=plotTitle, \
-        yaxis={'title':'Random', 'type':'log'}, xaxis={'title':'Time'},
+        yaxis={'title':'Temperatures', 'type':'log'}, xaxis={'title':'Time'},
         margin={ 'l': 50, 'r': 50, 'b': 50, 't': 5, 'pad': 0 },
         )
 
@@ -281,56 +399,7 @@ def plot():
     figure=dict(data=data, layout=layout)
     graphJSON = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
 
-    # try to connect to clients
-    print('try to connect to clients')
-    test_connect()
-    client_message = 'get_recycle_hour'
-    fridge_client.send_string(client_message)
-    recycle_hour = int(float(fridge_client.recv_string()))
-
-    client_message = 'get_next_recycle_time'
-    fridge_client.send_string(client_message)
-    next_recycle_time = eval(fridge_client.recv_string())
-    next_recycle_time = next_recycle_time.strftime('%Y-%m-%d %H:%M:%S')
-
-    # recycle_hour = 3
-    # next_recycle_time = 'fix me'
-    return render_template('webFridge.html', graphJSON=graphJSON,
-                           states = fridge_machine.Fridge.fridge_states,
-                           recycle_hour = recycle_hour, 
-                           next_recycle_time = next_recycle_time,
-                           async_mode=socketio.async_mode)
-
-
-def load_data(graph):
-    global DATA
-    print('load_data DATA.shape', DATA.shape, DATA.length)
-    print('building graphs')
-    # history, filename = load_history()
-    history = DATA
-    filename = FILENAME
-    newdata = []
-    x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
-         for d in history[:, 0]]
-
-    for idx, name in enumerate(graph):
-        lower_labels = [label.lower() for label in labels]
-        idx = lower_labels.index(name.lower()) + 2  # Could be 2 if there is human readable date
-        if len(history[:, 0]) > 1000:
-            hdata = np.column_stack((history[:, 0], history[:, idx]))
-            downsize = lttb.downsample(hdata, n_out=1000)
-            assert downsize.shape == (1000, 2)
-            x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
-                    for d in downsize[:, 0]]
-            y = list(downsize[:,1])
-        else:
-            y = list(history[:, idx])
-
-        print('load_data:', name, idx)
-        newdata.append({'x': x, 'y': y, 'type': 'scatter',
-                            'mode':'markers+lines', 'name':'%s' % name})
-    print('done building graphs')
-    return newdata, filename
+    return graphJSON
 
 
 
