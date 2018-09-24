@@ -235,7 +235,6 @@
             console.log('update_recycle info')
             // data = JSON.parse(data)
             console.log(data)
-            update_recycle_time(data['next_time']);
             document.getElementById('hour').value = data['recycle_hour'];
             document.getElementById('next').innerHTML = 'Next Time: ' + data['next_time'];
             });
