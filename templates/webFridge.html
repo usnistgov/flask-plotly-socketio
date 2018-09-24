@@ -92,7 +92,7 @@
             <br>
             <div> 
             Recycle Hour:
-            <input type="number" class="size-12" value="{{recycle_hour}}" min="-1" max="23" onchange="socket.emit('set_recycle_hour', this.value);">
+            <input id = "hour" type="number" class="size-12" value="{{recycle_hour}}" min="-1" max="23" onchange="socket.emit('set_recycle_hour', this.value);">
             </div>
             <br>
             <div id="next">
@@ -231,6 +231,14 @@
             Plotly.react('mainGraph', zoom_graph.data, zoom_graph.layout);
             // Plotly.newPlot('mainGraph', zoom_graph.data, zoom_graph.layout);
             });
+        socket.on('update_recycle', function(data) {
+            console.log('update_recycle info')
+            data = JSON.parse(data)
+            console.log(data)
+            update_recycle_time(data['next_time']);
+            document.getElementById('hour').value = int(data['recycle_hour']);
+            document.getElementById('next').innerHTML = 'Next Time: ' + data['next_time'];
+            });
         socket.on('new_data', function(data){
             //console.log("madeeee it");
             //console.log(data)
@@ -265,7 +273,7 @@
             }
             // update = {x:[data['x'][0]], y:[ data['y'][0] ]}
             // Plotly.extendTraces('mainGraph', update, [1]);
-            console.log(graph['x'][0][0])
+            // console.log(graph['x'][0][0])
             Plotly.extendTraces('mainGraph', graph, list);
             update_switches(table_names, table_data);
             //  Update time
