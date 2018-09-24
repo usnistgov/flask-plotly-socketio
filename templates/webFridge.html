@@ -209,7 +209,6 @@
                 update_log_filename(names['log_filename']);
                 // document.getElementById('download').innerHTML = names['log_filename'];
             }
-            //socket.emit('my_event', {data: 'I\'m connected!'});
         });
         var currentstate;
         socket.on('fridge_state', function(data){
@@ -293,7 +292,10 @@
                     socket.emit('unzoom', eventdata);
                 }
         });
-
+        if (msg) {
+            socket.emit('my_event','');
+            console.log('send my_event message');
+        }
         // var eid = document.getElementById("hp");
         // eid.checked = true;
     </script>
