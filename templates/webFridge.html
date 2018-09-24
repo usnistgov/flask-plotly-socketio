@@ -188,7 +188,7 @@
             console.log('update_recycle_time not implemented');
         }
         function update_log_filename(name) {
-            document.getElementById('download').innerHTML = name;
+            document.getElementById('download').innerHTML = 'Download '+name;
         }
         var graphs = {{graphJSON | safe}};
         Plotly.newPlot('mainGraph',graphs.data,graphs.layout || {});
