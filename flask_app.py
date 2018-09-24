@@ -75,6 +75,8 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, async_mode=None)
 thread = None
 TESTING = False
+if len(sys.argv) == 3:
+    TESTING = True
 if TESTING:
     with open('./logs/2017-10-10-12-19-14.csv', 'r') as f:
         labels = f.readline()
@@ -198,7 +200,7 @@ def background_thread():
 @socketio.on('connect', namespace='/')
 def test_connect():
     global thread, graph, table
-    if thread is None:
+    if (thread is None) and (not TESTING):
         thread =  socketio.start_background_task(target=background_thread)
         print('got to test_connect, thread started')
     print('Trying to connect to client')
@@ -408,6 +410,7 @@ if __name__ == "__main__":
         ip, port_ = '0.0.0.0', sys.argv[1]
     else:
         ip, port_ = '0.0.0.0', '50000'
+
 
     # Start Flask app
     #  socketio.run(app, host=ip, port=port_, debug=True, use_reloader=True)
