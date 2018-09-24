@@ -215,6 +215,17 @@ def test_disconnect():
 def my_event(message):
     print('my_event', request.sid)
     print('message', message)
+    client_message = 'get_recycle_hour'
+    fridge_client.send_string(client_message)
+    recycle_hour = int(float(fridge_client.recv_string()))
+
+    client_message = 'get_next_recycle_time'
+    fridge_client.send_string(client_message)
+    next_recycle_time = eval(fridge_client.recv_string())
+    next_recycle_time = next_recycle_time.strftime('%Y-%m-%d %H:%M:%S')
+    
+    message = {'recycle_hour': recycle_hour, 'next_time': next_recycle_time}
+    socket.emit('update_recycle', message) 
 
 @socketio.on('unzoom')  #, namespace='/')
 def unzoom(message):
@@ -313,7 +324,7 @@ def plot():
     # try to connect to clients
     print('try to connect to clients')
     test_connect()
-    if not TESTING:
+    if False:
         client_message = 'get_recycle_hour'
         fridge_client.send_string(client_message)
         recycle_hour = int(float(fridge_client.recv_string()))
@@ -323,7 +334,7 @@ def plot():
         next_recycle_time = eval(fridge_client.recv_string())
         next_recycle_time = next_recycle_time.strftime('%Y-%m-%d %H:%M:%S')
     else:
-        recycle_hour = 3
+        recycle_hour = -1 
         next_recycle_time = 'fix me'
     return render_template('webFridge.html', graphJSON=graphJSON,
                            states = fridge_machine.Fridge.fridge_states,

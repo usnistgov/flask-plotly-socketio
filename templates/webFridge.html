@@ -207,6 +207,8 @@
             names = msg;
             if (msg) {
                 update_log_filename(names['log_filename']);
+                socket.emit('my_event','');
+                console.log('send my_event message');
                 // document.getElementById('download').innerHTML = names['log_filename'];
             }
         });
@@ -292,10 +294,6 @@
                     socket.emit('unzoom', eventdata);
                 }
         });
-        if (msg) {
-            socket.emit('my_event','');
-            console.log('send my_event message');
-        }
         // var eid = document.getElementById("hp");
         // eid.checked = true;
     </script>
