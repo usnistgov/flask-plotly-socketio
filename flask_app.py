@@ -225,7 +225,7 @@ def my_event(message):
     next_recycle_time = next_recycle_time.strftime('%Y-%m-%d %H:%M:%S')
     
     message = {'recycle_hour': recycle_hour, 'next_time': next_recycle_time}
-    socket.emit('update_recycle', message) 
+    socketio.emit('update_recycle', message) 
 
 @socketio.on('unzoom')  #, namespace='/')
 def unzoom(message):
