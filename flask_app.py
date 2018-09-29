@@ -77,6 +77,7 @@ thread = None
 TESTING = False
 if len(sys.argv) == 3:
     TESTING = True
+    print('TESTING')
 if TESTING:
     with open('./logs/2017-10-10-12-19-14.csv', 'r') as f:
         labels = f.readline()
@@ -300,7 +301,15 @@ def download_logfile():
 def plot():
     global DATA, graph
     plotTitle = 'Flask socketio plotly test app'
-    graphJSON = build_graphjson()
+    # graphJSON = build_graphjson()
+    layout = go.Layout(  # title=plotTitle, \
+        yaxis={'title':'Temperatures', 'type':'log'}, xaxis={'title':'Time'},
+        margin={ 'l': 50, 'r': 50, 'b': 50, 't': 5, 'pad': 0 },
+        )
+
+    # PlotlyJSONEncoder converts objects to their JSON equivalents
+    figure=dict(data={'x': [0, 1], 'y':[1, 0]}, layout=layout)
+    graphJSON = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
 
     # # Updates the data for the table
     # newdata, filename = load_data(graph)
