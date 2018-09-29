@@ -306,9 +306,9 @@ def plot():
         yaxis={'title':'Temperatures', 'type':'log'}, xaxis={'title':'Time'},
         margin={ 'l': 50, 'r': 50, 'b': 50, 't': 5, 'pad': 0 },
         )
-
+    trace= go.Scattergl(x=[0,1], y=[1,0], name='temp')
     # PlotlyJSONEncoder converts objects to their JSON equivalents
-    figure=dict(data={'x': [0, 1], 'y':[1, 0]}, layout=layout)
+    figure=dict(data=[trace], layout=layout)
     graphJSON = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
 
     # # Updates the data for the table
