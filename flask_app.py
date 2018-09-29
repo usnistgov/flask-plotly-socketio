@@ -120,7 +120,7 @@ def load_history():
     else:
         logfile_prefix = ''
     filename = LOG_PATH + previous_log_filename
-    tail = subprocess.Popen(['tail', '-100000', filename],
+    tail = subprocess.Popen(['tail', '-50000', filename],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, errors = tail.communicate()
     # with open(filename, 'r') as f:
@@ -301,6 +301,7 @@ def plot():
     global DATA, graph
     plotTitle = 'Flask socketio plotly test app'
     graphJSON = build_graphjson()
+
     # # Updates the data for the table
     # newdata, filename = load_data(graph)
     # # Create a traces and layout to plot
