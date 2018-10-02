@@ -1,12 +1,9 @@
 from __future__ import print_function
 import os
 import sys
-import random
 import time
 import datetime
 from collections import deque
-from collections import OrderedDict
-import numpy as np
 import logging
 import logzero
 from logzero import logger
@@ -14,8 +11,19 @@ from logzero import logger
 import subprocess
 import zmq
 import fridge_machine
+import ruamel
+from ruamel.yaml import YAML
+import numpy as np
+#*** to run this app you need pip install Flask and Flask-SocketIO and eventlet and ***#
+from flask import Flask, render_template, request, send_file
+from flask_socketio import SocketIO, emit
+import plotly
+import plotly.plotly as py
+import plotly.graph_objs as go
+import json
+import preallocate
 
-import os,sys,inspect
+import inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 print(parentdir)
@@ -25,25 +33,12 @@ sys.path.insert(0,parentdir)
 import data_logger
 import client
 import lttb
-try:
-    from eventlet import monkey_patch as monkey_patch
-    monkey_patch()
-except ImportError:
-    try:
-        from gevent.monkey import patch_all
-        patch_all()
-    except ImportError:
-        pass
 
-#*** to run this app you need pip install Flask and Flask-SocketIO and eventlet and ***#
-from flask import Flask, render_template, request, send_file
-from flask_socketio import SocketIO, emit
-import plotly
-import plotly.plotly as py
-import plotly.graph_objs as go
-import json
-from threading import Thread, Lock
-import preallocate
+from eventlet import monkey_patch as monkey_patch
+monkey_patch()
+
+
+yaml = YAML()
 
 logzero.loglevel(logging.INFO)
 app_logger = logger
@@ -84,11 +79,15 @@ if TESTING:
     LOG_PATH = './logs/'
     table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs']
     LABEL_OFFSET = 0
+    YAML_FILE = './config.yaml'
 else:
     labels = client.client('127.0.0.1', 50326, 'getlabels')
     LOG_PATH = '../logs/'
     table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs', 'relays']
     LABEL_OFFSET = 2
+    YAML_FILE = '../config.yaml'
+with open(YAML_FILE, 'r') as f:
+    CONFIG = yaml.load(f)
 labels = labels.split(',')
 labels = [label.strip() for label in labels]
 for l in labels:
@@ -216,17 +215,18 @@ def test_disconnect():
 def my_event(message):
     print('my_event', request.sid)
     print('message', message)
-    client_message = 'get_recycle_hour'
-    fridge_client.send_string(client_message)
-    recycle_hour = int(float(fridge_client.recv_string()))
+    if not TESTING:
+        client_message = 'get_recycle_hour'
+        fridge_client.send_string(client_message)
+        recycle_hour = int(float(fridge_client.recv_string()))
 
-    client_message = 'get_next_recycle_time'
-    fridge_client.send_string(client_message)
-    next_recycle_time = eval(fridge_client.recv_string())
-    next_recycle_time = next_recycle_time.strftime('%Y-%m-%d %H:%M:%S')
-    
-    message = {'recycle_hour': recycle_hour, 'next_time': next_recycle_time}
-    socketio.emit('update_recycle', message) 
+        client_message = 'get_next_recycle_time'
+        fridge_client.send_string(client_message)
+        next_recycle_time = eval(fridge_client.recv_string())
+        next_recycle_time = next_recycle_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        message = {'recycle_hour': recycle_hour, 'next_time': next_recycle_time}
+        socketio.emit('update_recycle', message) 
 
 @socketio.on('unzoom')  #, namespace='/')
 def unzoom(message):
@@ -423,7 +423,84 @@ def build_graphjson(data_slice=None):
 
     return graphJSON
 
+def check_change(**kwargs):
+    """ Check if config.yaml has changed"""
+    kwargs = kwargs['kwargs']
+    # print('check_change kwargs', kwargs)
+    if not hasattr(check_change, 'filename'):
+        check_change.filename = kwargs['filename']
+    if not hasattr(check_change, 'mtime'):
+        check_change.mtime = os.stat(check_change.filename).st_mtime
 
+    new_mtime = os.stat(check_change.filename).st_mtime
+    changed = new_mtime != check_change.mtime
+    if changed:
+        print('old, new', '%.2f'%time.time(), check_change.mtime, new_mtime)
+        check_change.mtime = new_mtime
+    return changed
+
+
+def signal_modified_yaml(**kwargs):
+    print('start to check for modified yaml')
+    print('kwargs', kwargs)
+    while True:
+        socketio.sleep(1)
+        # print('done sleeping')
+        changed = check_change(**kwargs)
+        if changed:
+            # print('put something on queue')
+            # QUEUE.put(changed)
+            print('emit update')
+            socketio.emit('update', CONFIG, namespace='/config')
+
+
+yaml_thread = None
+
+@socketio.on('connect', namespace='/config')
+def socketio_connect():
+    global CONFIG, yaml_thread
+    data = CONFIG
+    socketio.emit('connect', data, namespace='/config')
+    if yaml_thread is None:
+        print('Start background yaml_thread')
+        thread = socketio.start_background_task(target=signal_modified_yaml,
+                                                kwargs={'filename': YAML_FILE} )
+
+@socketio.on('disconnect', namespace='/config')
+def socketio_disconnect():
+    print('Client disconnected', request.sid)
+
+def update(d, new):
+    updated = False
+    for k in d.keys():
+        if isinstance(d[k], ruamel.yaml.comments.CommentedMap):
+            updated |= update(d[k], new[k])
+        else:
+            if d[k] != new[k]:
+                print('replace', k, d[k], new[k])
+                d[k] = new[k]
+                updated = True
+    return updated
+
+
+@socketio.on('new_config', namespace='/config')
+def socketio_update(msg):
+    """ handle new_config socketio event, yaml was updated on web page
+    """
+    global yaml, YAML_FILE, CONFIG
+    print('new_config', request.sid)
+    updated = update(CONFIG, msg)
+    if updated:
+        # print('new CONFIG', CONFIG)
+        with open(YAML_FILE, 'w') as f:
+            yaml.indent(mapping=2, sequence=4, offset=2)
+            yaml.dump(CONFIG, f)
+
+
+@app.route('/config')
+def config_endpoint():
+    """ /config endpoint of website """
+    return render_template('jsoneditor.html')
 
 
 if __name__ == "__main__":
@@ -431,7 +508,6 @@ if __name__ == "__main__":
         ip, port_ = '0.0.0.0', sys.argv[1]
     else:
         ip, port_ = '0.0.0.0', '50000'
-
 
     # Start Flask app
     #  socketio.run(app, host=ip, port=port_, debug=True, use_reloader=True)
