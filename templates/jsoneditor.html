@@ -1,0 +1,94 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Modify yaml file</title>
+
+  <!-- when using the mode "code", it's important to specify charset utf-8 -->
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+
+  <!--
+      <link href="../dist/jsoneditor.css" rel="stylesheet" type="text/css">
+  -->
+  <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='jsoneditor.css') }}">
+  <script src="{{ url_for('static', filename='jsoneditor.js') }}"> </script>
+  <!-- script src="../dist/jsoneditor.js"></script>
+  -->
+
+  <style type="text/css">
+    body {
+      font: 10.5pt arial;
+      color: #4d4d4d;
+      line-height: 150%;
+      width: 500px;
+    }
+
+    code {
+      background-color: #f5f5f5;
+    }
+
+    #jsoneditor {
+      width: 500px;
+      height: 500px;
+    }
+  </style>
+</head>
+<body>
+
+<p>
+  <button id="getJSON">Update yaml</button>
+</p>
+
+<div id="jsoneditor"></div>
+
+<script>
+  var container = document.getElementById('jsoneditor');
+
+  var options = {
+    mode: 'tree',
+    modes: ['code', 'form', 'text', 'tree', 'view'], // allowed modes
+    onError: function (err) {
+      alert(err.toString());
+    },
+    onEditable: function (node) {
+      return {field: false, value: true};
+    },
+    onModeChange: function (newMode, oldMode) {
+      console.log('Mode switched from', oldMode, 'to', newMode);
+    }
+  };
+
+  var json = {
+    "array": [1, 2, 3],
+    "boolean": true,
+    "null": null,
+    "number": 123,
+    "object": {"a": "b", "c": "d"},
+    "string": "Hello World"
+  };
+
+  var editor = new JSONEditor(container, options, json);
+  var socket = io.connect('http://'  + document.domain + ':' + location.port +
+  '/config');
+  // get json
+  document.getElementById('getJSON').onclick = function () {
+    var json = editor.get();
+    console.log('Try to send update');
+    socket.emit('new_config', json);
+    // alert(JSON.stringify(json, null, 2));
+  };
+  // Event handler for new connections.
+  // The callback function is invoked when a connection with the
+  // server is established.
+  socket.on('connect', function(msg) {
+      console.log('got connected msg:', msg);
+      //console.log(typeof(msg));
+      editor.set(msg);
+      });
+  socket.on('update', function(msg) {
+      console.log('got update msg:', msg);
+      editor.set(msg);
+      });
+</script>
+</body>
+</html>
