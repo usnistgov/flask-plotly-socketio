@@ -350,7 +350,10 @@ def plot():
                            states = fridge_machine.Fridge.fridge_states,
                            recycle_hour = recycle_hour, 
                            next_recycle_time = next_recycle_time,
-                           async_mode=socketio.async_mode)
+                           async_mode=socketio.async_mode,
+                           room=CONFIG['location'],
+                           name=CONFIG['name'],
+                          )
 
 
 def load_data(graph, data_slice=None):

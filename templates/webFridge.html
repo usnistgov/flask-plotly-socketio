@@ -290,7 +290,18 @@
             // update = {x:[data['x'][0]], y:[ data['y'][0] ]}
             // Plotly.extendTraces('mainGraph', update, [1]);
             // console.log(graph['x'][0][0])
-            Plotly.extendTraces('mainGraph', graph, list);
+            //
+            //  Check if date is in plotted range of dates
+            var update_time = graph[0]['x']['0'];
+            update_time.replace(' ', 'T');
+            console.log('update_time', update_time);
+            left_ = Date.parse(mainGraph.layout.xaxis.range[0].replace(' ', 'T'));
+            right_ = Date.parse(mainGraph.layout.xaxis.range[1].replace(' ', 'T'));
+            update_time = Date.parse(update_time);
+            if ( (left_<update_time) & (update_time<right_)) {
+                Plotly.extendTraces('mainGraph', graph, list);
+            }
+            //
             update_switches(table_names, table_data);
             //  Update time
             var d = new Date();
