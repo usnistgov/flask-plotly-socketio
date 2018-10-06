@@ -292,13 +292,15 @@
             // console.log(graph['x'][0][0])
             //
             //  Check if date is in plotted range of dates
-            var update_time = graph[0]['x']['0'];
-            update_time.replace(' ', 'T');
-            console.log('update_time', update_time);
+            var update_time = graph['x'][0][0];
+            update_time = update_time.replace(' ', 'T');
+            // console.log('update_time', update_time);
             left_ = Date.parse(mainGraph.layout.xaxis.range[0].replace(' ', 'T'));
             right_ = Date.parse(mainGraph.layout.xaxis.range[1].replace(' ', 'T'));
             update_time = Date.parse(update_time);
+            // console.log(left_, right_, update_time);
             if ( (left_<update_time) & (update_time<right_)) {
+                console.log('update graph');
                 Plotly.extendTraces('mainGraph', graph, list);
             }
             //

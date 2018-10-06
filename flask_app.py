@@ -76,9 +76,10 @@ if len(sys.argv) == 3:
 if TESTING:
     with open('./logs/2017-10-10-12-19-14.csv', 'r') as f:
         labels = f.readline()
+        labels = labels.split(',', 1)[-1]
     LOG_PATH = './logs/'
     table = ['40K', '4K', '1K', 'switch', 'pump', 'hp', 'hs']
-    LABEL_OFFSET = 0
+    LABEL_OFFSET = 1
     YAML_FILE = './config.yaml'
 else:
     labels = client.client('127.0.0.1', 50326, 'getlabels')
@@ -95,6 +96,7 @@ for l in labels:
 graph = ['40K', '4K', '1K', 'switch', 'pump']
 DATA = None
 SIZE = 100000
+HR_date = False
 def load_history():
     # global data_history, logfile_prefix
     # if 'logfile_prefix' in fridge.config['logfile_prefix']:
@@ -129,6 +131,11 @@ def load_history():
     history = deque(iter(output.decode().splitlines()), history_start)
     data_history = np.genfromtxt(history, invalid_raise=False, delimiter=',')
     print(type(data_history), data_history.shape)
+    #  Check if Human Readable data is the second column
+    if data_history[0, 1] is float('nan'):
+        HR_date = True
+    else:
+        HR_date = False
     data = preallocate.PreallocatedArray(np.zeros((SIZE, data_history.shape[1])))
     data[:data_history.shape[0], :data_history.shape[1]] = data_history
     data.length = data_history.shape[0]
@@ -137,6 +144,7 @@ def load_history():
     except:
         last_point = None
     app_logger.info('last_point, %r' % last_point)
+    
     return data, filename
 
 DATA, FILENAME = load_history()
@@ -152,7 +160,7 @@ def background_thread():
         # print('poll socks', socks)
         if subscriber in socks:
             data_string = subscriber.recv_string()
-            # print('subscriber message:', data_string)
+            print('subscriber message:', data_string)
             data = data_string.split(',')
             # print('len of data', len(data))
             app_logger.debug(data_string)
@@ -165,8 +173,24 @@ def background_thread():
             #for i, name in enumerate(fridge.config['graph']):
                 # idx = self.sensor_names.index(name) + 1
                 # value = float(data_string_list[idx])
+            def get_idx(labels, name):
+                idx = None
+                offset = 1
+                try:
+                    idx = labels.index(name.lower()) + offset
+                except ValueError:
+                    try:
+                        idx = labels.index(name.upper()) + offset
+                    except Exception as e:
+                        # print(e)
+                        pass
+                except Exception as e:
+                    print(e)
+                # if idx is None:
+                #     print('Can not find ', name)
+                return idx
             for i, name in enumerate(graph):
-                idx = labels.index(name.lower()) + 1
+                idx = get_idx(labels, name)
                 value = float(data[idx])
                 if np.isnan(value):
                     value = -1
@@ -177,19 +201,26 @@ def background_thread():
             # print('datastr', datastr)
             table_dict = {}
             for name in table:
-                idx = labels.index(name.lower()) + 1
-                value = float(data[idx])
-                if np.isnan(value):
-                    value = -1
+                idx = get_idx(labels, name)
+                # idx = labels.index(name.lower()) + 1
+                if idx is not None:
+                    value = float(data[idx])
+                    if np.isnan(value):
+                        value = -1
+                else:
+                    value = -2
                 table_dict[name] = value
             alldata = {'graph': datastr, 'table': table_dict}
             socketio.emit('new_data', alldata) #  ,namespace='/')
             time, data = data_string.split(',', 1)
             new_row = np.fromstring(data_string, sep=',')
-            new_row2 = np.zeros(len(new_row)+1)
-            new_row2[0] = new_row[0]
-            new_row2[1] = float('nan')
-            new_row2[2:] = new_row[1:]
+            if HR_date:
+                new_row2 = np.zeros(len(new_row)+1)
+                new_row2[0] = new_row[0]
+                new_row2[1] = float('nan')
+                new_row2[2:] = new_row[1:]
+            else:
+                new_row2 = new_row
             DATA.append_row(new_row2)
             # print('background DATA.shape', DATA.shape, DATA.length)
 
@@ -201,7 +232,7 @@ def background_thread():
 @socketio.on('connect', namespace='/')
 def test_connect():
     global thread, graph, table
-    if (thread is None) and (not TESTING):
+    if (thread is None):  # and (not TESTING):
         thread =  socketio.start_background_task(target=background_thread)
     print("sending names to client")
     data = {'graph': graph, 'table': table, 'log_filename': os.path.basename(FILENAME)}
@@ -215,7 +246,8 @@ def test_disconnect():
 def my_event(message):
     print('my_event', request.sid)
     print('message', message)
-    if not TESTING:
+    # if not TESTING:
+    if True:
         client_message = 'get_recycle_hour'
         fridge_client.send_string(client_message)
         recycle_hour = int(float(fridge_client.recv_string()))
@@ -371,7 +403,9 @@ def load_data(graph, data_slice=None):
         stop = np.where(history[:,0]<data_slice[1])[0][-1]
         data_slice = range(start, stop)
         # print('data_slice:', data_slice, stop-start)
-
+        # bool_ = np.logical_and(history[:,0] > data_slice[0], history[:,0] <
+        #                data_slice[1])
+        # data_slice = np.where(bool_)[0]
     x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
          for d in history[data_slice, 0]]
     use_lttb = len(x) > 1000
