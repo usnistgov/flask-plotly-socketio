@@ -104,7 +104,7 @@ def load_history():
     # else:
     #     prefix = ''
     #  Find previous log file
-
+    global HR_date
     previous_log_filename = data_logger.getlast.getlast(LOG_PATH, '*.csv')
     print('log_filename', previous_log_filename)
     #  Create logger object
@@ -132,10 +132,12 @@ def load_history():
     data_history = np.genfromtxt(history, invalid_raise=False, delimiter=',')
     print(type(data_history), data_history.shape)
     #  Check if Human Readable data is the second column
-    if data_history[0, 1] is float('nan'):
+    print(data_history[0, 1])
+    if np.isnan(data_history[0, 1]):
         HR_date = True
     else:
         HR_date = False
+    print('HR_date: ' + '%s' % HR_date)
     data = preallocate.PreallocatedArray(np.zeros((SIZE, data_history.shape[1])))
     data[:data_history.shape[0], :data_history.shape[1]] = data_history
     data.length = data_history.shape[0]
@@ -150,7 +152,7 @@ def load_history():
 DATA, FILENAME = load_history()
 
 def background_thread():
-    global labels, graph, table, DATA
+    global labels, graph, table, DATA, HR_date
     """send server generated events to clients."""
     print('starting background thread')
     socketio.sleep(1)
@@ -160,7 +162,7 @@ def background_thread():
         # print('poll socks', socks)
         if subscriber in socks:
             data_string = subscriber.recv_string()
-            print('subscriber message:', data_string)
+            # print('subscriber message:', data_string)
             data = data_string.split(',')
             # print('len of data', len(data))
             app_logger.debug(data_string)
@@ -212,8 +214,8 @@ def background_thread():
                 table_dict[name] = value
             alldata = {'graph': datastr, 'table': table_dict}
             socketio.emit('new_data', alldata) #  ,namespace='/')
-            time, data = data_string.split(',', 1)
             new_row = np.fromstring(data_string, sep=',')
+            # print('len new_row', len(new_row), HR_date)
             if HR_date:
                 new_row2 = np.zeros(len(new_row)+1)
                 new_row2[0] = new_row[0]
