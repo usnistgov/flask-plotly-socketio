@@ -99,6 +99,9 @@
                 Next Time: {{next_recycle_time}}
             </div>
             <br>
+            <button type="button"  id="new_log"
+                                    onclick="new_logfile(this);">
+                Start new log file<br>
             <div id="download_hyperlink">
             <a id="download" href="/logfile"> Download log </a>
             </div>
@@ -192,6 +195,10 @@
         }
         function update_log_filename(name) {
             document.getElementById('download').innerHTML = 'Download '+name;
+        }
+        function new_logfile(obj) {
+            console.log(obj);
+            socket.emit('new_logfile');
         }
         var zoom_filled = false;
         function handle_zoom_fill(obj) {

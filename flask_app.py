@@ -262,6 +262,11 @@ def my_event(message):
         message = {'recycle_hour': recycle_hour, 'next_time': next_recycle_time}
         socketio.emit('update_recycle', message) 
 
+@socketio.on('new_logfile')  #, namespace='/')
+def new_logfile():
+    print('Create new log file')
+
+
 @socketio.on('unzoom')  #, namespace='/')
 def unzoom(message):
     global graph
