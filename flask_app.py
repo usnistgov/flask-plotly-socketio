@@ -104,7 +104,7 @@ def load_history():
     # else:
     #     prefix = ''
     #  Find previous log file
-    global HR_date
+    global HR_date, logfile_prefix
     previous_log_filename = data_logger.getlast.getlast(LOG_PATH, '*.csv')
     print('log_filename', previous_log_filename)
     #  Create logger object
@@ -151,6 +151,33 @@ def load_history():
 
 DATA, FILENAME = load_history()
 
+def on_new_log_pressed():
+    global logfile_prefix
+    head = ''
+    if len(logfile_prefix) > 0:
+        print('logfile_prefix:', logfile_prefix)
+        if logfile_prefix.endswith('-'):
+            logfile_prefix = logfile_prefix[:-1]
+        head = logfile_prefix.rstrip('0123456789')
+    print('head:', head)
+    if len(head) > 0:
+        print(logfile_prefix, head, len(head))
+        tail = int(logfile_prefix[len(head):])
+        print('new file name', head, tail+1)
+        logfile_prefix = head + '%d-' % (tail + 1)
+        print(logfile_prefix)
+    filename = LOG_PATH + logfile_prefix + \
+        datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S.csv')
+    print('new log file name: ' + filename)
+    with open(filename, 'w') as csvfile:
+        csvfile.write('')
+
+    if False:
+        create_log(filename, logger=logger_config['logger'])
+        self.logfile_label.set_text(filename)
+        self.logfile_label.attributes['download'] = os.path.basename(filename)
+        self.logfile_label._filename = filename
+
 def background_thread():
     global labels, graph, table, DATA, HR_date
     """send server generated events to clients."""
@@ -162,6 +189,10 @@ def background_thread():
         # print('poll socks', socks)
         if subscriber in socks:
             data_string = subscriber.recv_string()
+            if data_string.startswith('file'):
+                print('data_string:', data_string)
+                socketio.emit('update_log_name', os.path.basename(data_string))
+                return
             # print('subscriber message:', data_string)
             data = data_string.split(',')
             # print('len of data', len(data))
@@ -265,7 +296,7 @@ def my_event(message):
 @socketio.on('new_logfile')  #, namespace='/')
 def new_logfile():
     print('Create new log file')
-
+    on_new_log_pressed()
 
 @socketio.on('unzoom')  #, namespace='/')
 def unzoom(message):

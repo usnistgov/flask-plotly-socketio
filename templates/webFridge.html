@@ -99,15 +99,20 @@
                 Next Time: {{next_recycle_time}}
             </div>
             <br>
-            <button type="button"  id="new_log"
-                                    onclick="new_logfile(this);">
-                Start new log file<br>
             <div id="download_hyperlink">
             <a id="download" href="/logfile"> Download log </a>
             </div>
+            <br>
+            <button type="button"  id="new_log"
+                                    onclick="new_logfile(this);" >
+                Start new log file
+            </button>
+            <br>
+            <br>
             <button type="button"  id="fill_zoom"
                                     onclick="handle_zoom_fill(this);">
-                Fill in zoom<br>
+            Fill in zoom
+            </button>
             <!--
             <input type="file">
             -->
@@ -238,6 +243,13 @@
 
             }
         });
+        socket.on('update_log_name', function(msg) {
+            console.log('update_log_name: ', msg);
+            if (msg) {
+                update_log_filename(msg);
+            }
+        });
+
         var currentstate;
         socket.on('fridge_state', function(data){
             // console.log(data);
