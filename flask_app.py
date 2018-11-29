@@ -14,7 +14,6 @@ import fridge_machine
 import ruamel
 from ruamel.yaml import YAML
 import numpy as np
-#*** to run this app you need pip install Flask and Flask-SocketIO and eventlet and ***#
 from flask import Flask, render_template, request, send_file
 from flask_socketio import SocketIO, emit
 import plotly
