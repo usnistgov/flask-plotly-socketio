@@ -1,2 +1,6 @@
 __*/*
 __*
+.flask_app.py.un~
+*.py~
+*.pyc
+*.un~

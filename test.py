@@ -2,10 +2,12 @@ import zmq
 import random
 import time
 import threading
+fname = 'logs/2017-10-10-12-19-14.csv'
+fname = 'logs/2018-11-03-16-42-33.csv'
 
 def serve():
     print('serve thread started')
-    with open('logs/2017-10-10-12-19-14.csv', 'r') as f:
+    with open(fname, 'r') as f:
         labels = f.readline()
         labels = labels[1:]
         labels = labels.strip()
@@ -26,7 +28,7 @@ context = zmq.Context()
 socket = context.socket(zmq.PUB)
 socket.bind("tcp://*:5556")
 
-with open('logs/2017-10-10-12-19-14.csv', 'r') as f:
+with open(fname, 'r') as f:
     count = 0
     while True:
         line = f.readline()

@@ -11,30 +11,36 @@ from logzero import logger
 import subprocess
 import zmq
 import fridge_machine
+import tail
 import ruamel
 from ruamel.yaml import YAML
 import numpy as np
 from flask import Flask, render_template, request, send_file
 from flask_socketio import SocketIO, emit
+import eventlet
 import plotly
-import plotly.plotly as py
+# import plotly.plotly as py
 import plotly.graph_objs as go
 import json
 import preallocate
-
 import inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+currentdir = os.path.dirname(os.path.abspath(
+                             inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 print(parentdir)
 if 'piServer2' not in parentdir:
     parentdir = os.path.join(parentdir, 'piServer2')
-sys.path.insert(0,parentdir)
+sys.path.insert(0, parentdir)
 import data_logger
 import client
-import lttb
+try:
+    import lttb
+except Exception as e:
+    print('lttb not found')
+    print(e)
 
-from eventlet import monkey_patch as monkey_patch
-monkey_patch()
+# from eventlet import monkey_patch as monkey_patch
+eventlet.monkey_patch()
 
 
 yaml = YAML()
@@ -73,7 +79,8 @@ if len(sys.argv) == 3:
     TESTING = True
     print('TESTING')
 if TESTING:
-    with open('./logs/2017-10-10-12-19-14.csv', 'r') as f:
+    # with open('./logs/2017-10-10-12-19-14.csv', 'r') as f:
+    with open('./logs/2018-11-03-16-42-33.csv', 'r') as f:
         labels = f.readline()
         labels = labels.split(',', 1)[-1]
     LOG_PATH = './logs/'
@@ -121,14 +128,20 @@ def load_history():
     else:
         logfile_prefix = ''
     filename = LOG_PATH + previous_log_filename
-    tail = subprocess.Popen(['tail', '-50000', filename],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output, errors = tail.communicate()
-    # with open(filename, 'r') as f:
-    #    history = deque(f, history_start)
-    history_start = 100000
-    history = deque(iter(output.decode().splitlines()), history_start)
-    data_history = np.genfromtxt(history, invalid_raise=False, delimiter=',')
+    if os.name == 'nt':
+        history = tail.tail(filename, 50000)
+        data_history = np.genfromtxt(history, invalid_raise=False,
+                                     delimiter=",")
+    else:
+        tail_out = subprocess.Popen(['tail', '-50000', filename],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, errors = tail_out.communicate()
+        # with open(filename, 'r') as f:
+        #    history = deque(f, history_start)
+        history_start = 100000
+        history = deque(iter(output.decode().splitlines()), history_start)
+        data_history = np.genfromtxt(history, invalid_raise=False,
+                                     delimiter=',')
     print(type(data_history), data_history.shape)
     #  Check if Human Readable data is the second column
     print(data_history[0, 1])
@@ -145,7 +158,7 @@ def load_history():
     except:
         last_point = None
     app_logger.info('last_point, %r' % last_point)
-    
+
     return data, filename
 
 DATA, FILENAME = load_history()
@@ -161,9 +174,9 @@ def on_new_log_pressed():
     print('head:', head)
     if len(head) > 0:
         print(logfile_prefix, head, len(head))
-        tail = int(logfile_prefix[len(head):])
-        print('new file name', head, tail+1)
-        logfile_prefix = head + '%d-' % (tail + 1)
+        tail_idx = int(logfile_prefix[len(head):])
+        print('new file name', head, tail_idx+1)
+        logfile_prefix = head + '%d-' % (tail_idx + 1)
         print(logfile_prefix)
     filename = LOG_PATH + logfile_prefix + \
         datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S.csv')
@@ -180,16 +193,18 @@ def on_new_log_pressed():
 def background_thread():
     global labels, graph, table, DATA, HR_date
     """send server generated events to clients."""
-    print('starting background thread')
+    app_logger.info('starting background thread')
     socketio.sleep(1)
     while True:
+        app_logger.debug('poll in background')
         socketio.sleep(1)
-        socks = dict(poller.poll())
+        socks = dict(poller.poll(100))
+        app_logger.debug('finished polling')
         # print('poll socks', socks)
         if subscriber in socks:
             data_string = subscriber.recv_string()
             if data_string.startswith('file'):
-                print('data_string:', data_string)
+                app_logger.info('data_string:', data_string)
                 socketio.emit('update_log_name', os.path.basename(data_string))
                 return
             # print('subscriber message:', data_string)
@@ -243,7 +258,7 @@ def background_thread():
                     value = -2
                 table_dict[name] = value
             alldata = {'graph': datastr, 'table': table_dict}
-            socketio.emit('new_data', alldata) #  ,namespace='/')
+            socketio.emit('new_data', alldata)  # ,namespace='/')
             new_row = np.fromstring(data_string, sep=',')
             # print('len new_row', len(new_row), HR_date)
             if HR_date:
@@ -261,25 +276,30 @@ def background_thread():
             app_logger.debug('fridge is in state: %s' % data_string)
             socketio.emit('fridge_state', data_string)
 
+
 @socketio.on('connect', namespace='/')
 def test_connect():
     global thread, graph, table
     if (thread is None):  # and (not TESTING):
-        thread =  socketio.start_background_task(target=background_thread)
-    print("sending names to client")
-    data = {'graph': graph, 'table': table, 'log_filename': os.path.basename(FILENAME)}
+        thread = socketio.start_background_task(target=background_thread)
+    app_logger.debug("got connect, started background, sending filename" +
+                     "and stuff, connect event")
+    data = {'graph': graph, 'table': table,
+            'log_filename': os.path.basename(FILENAME)}
     socketio.emit('connect', data)  # , namespace='/')
 
-@socketio.on('disconnect')  #, namespace='/')
+
+@socketio.on('disconnect')  # , namespace='/')
 def test_disconnect():
     print('Client disconnected', request.sid)
 
-@socketio.on('my_event')  #, namespace='/')
+
+@socketio.on('my_event')  # , namespace='/')
 def my_event(message):
-    print('my_event', request.sid)
-    print('message', message)
-    # if not TESTING:
-    if True:
+    app_logger.info('my_event' + request.sid)
+    app_logger.info('message' + message)
+    # if True:
+    if not TESTING:
         client_message = 'get_recycle_hour'
         fridge_client.send_string(client_message)
         recycle_hour = int(float(fridge_client.recv_string()))
@@ -289,22 +309,27 @@ def my_event(message):
         next_recycle_time = eval(fridge_client.recv_string())
         next_recycle_time = next_recycle_time.strftime('%Y-%m-%d %H:%M:%S')
 
-        message = {'recycle_hour': recycle_hour, 'next_time': next_recycle_time}
-        socketio.emit('update_recycle', message) 
+        message = {'recycle_hour': recycle_hour,
+                   'next_time': next_recycle_time}
+        socketio.emit('update_recycle', message)
 
-@socketio.on('new_logfile')  #, namespace='/')
+
+@socketio.on('new_logfile')  # , namespace='/')
 def new_logfile():
     print('Create new log file')
     on_new_log_pressed()
 
-@socketio.on('unzoom')  #, namespace='/')
+
+@socketio.on('unzoom')  # , namespace='/')
 def unzoom(message):
     global graph
-
+    app_logger.debug('Got unzoom request')
     graphJSON = build_graphjson()
+    app_logger.debug('send command to update graph via zoom_graph')
     socketio.emit('zoom_graph', graphJSON)
 
-@socketio.on('zoom')  #, namespace='/')
+
+@socketio.on('zoom')  # , namespace='/')
 def zoom(message):
     global graph
     # print('zoom', request.sid)
@@ -314,18 +339,20 @@ def zoom(message):
     stop = datetime.datetime.strptime(message['xaxis.range[1]'], format_str)
     start = time.mktime(start.timetuple())
     stop = time.mktime(stop.timetuple())
-    print('timestamps for range', start, stop, stop-start)
+    app_logger.info('zoom in timestamps for range %r %r %r' % (start, stop,
+                                                               stop-start))
 
-    newdata, filename = load_data(graph, data_slice = (start, stop))
-    data=[]
-    figure={}
+    newdata, filename = load_data(graph, data_slice=(start, stop))
+    data = []
+    figure = {}
     for curve in newdata:
         trace = go.Scattergl(x=curve['x'], y=curve['y'],
                              name=curve['name'], mode=curve['mode'])
         data.append(trace)
     layout = go.Layout(  # title=plotTitle, \
-        yaxis={'title':'Temperatures', 'type':'log'}, xaxis={'title':'Time'},
-        margin={ 'l': 50, 'r': 50, 'b': 50, 't': 5, 'pad': 0 },
+        yaxis={'title': 'Temperatures', 'type': 'log'},
+        xaxis={'title': 'Time'},
+        margin={'l': 50, 'r': 50, 'b': 50, 't': 5, 'pad': 0},
         )
 
     # PlotlyJSONEncoder converts objects to their JSON equivalents
@@ -426,9 +453,9 @@ def plot():
 
 
 def load_data(graph, data_slice=None):
-    global DATA
-    print('load_data DATA.shape', DATA.shape, DATA.length)
-    print('building graphs')
+    global DATA, FILENAME
+    app_logger.info('building graphs')
+    app_logger.info('load_data DATA.shape %r %r' % (DATA.shape, DATA.length))
     # history, filename = load_history()
     history = DATA
     filename = FILENAME
@@ -453,9 +480,9 @@ def load_data(graph, data_slice=None):
         # print('y', y)
         # if len(history[data_slice, 0]) > 1000:
         if use_lttb:
-            print('data_slice len', len(data_slice))
+            app_logger.debug('data_slice len', len(data_slice))
             hdata = np.column_stack((history[data_slice, 0], history[data_slice, idx]))
-            print('hdata.shape', hdata.shape)
+            app_logger.debug('hdata.shape', hdata.shape)
             downsize = lttb.downsample(hdata, n_out=1000)
             assert downsize.shape == (1000, 2)
             x = [datetime.datetime.fromtimestamp(d).strftime('%y-%m-%d %H:%M:%S')
@@ -464,21 +491,21 @@ def load_data(graph, data_slice=None):
         else:
             y = list(history[data_slice, idx])
 
-        print('load_data:', name, idx)
+        # print('load_data:', name, idx)
         newdata.append({'x': x, 'y': y, 'type': 'scatter',
                             'mode':'markers+lines', 'name':'%s' % name})
-    print('done building graphs')
+    app_logger.info('done building graphs')
     return newdata, filename
 
 def build_graphjson(data_slice=None):
 
-    global graph
+    global graph, FILENAME
+    app_logger.info('build_graphjson, filename: '+FILENAME)
     if data_slice is None:
         newdata, filename = load_data(graph)
     else:
         newdata, filename = load_data(graph, data_slice)
     # Create a traces and layout to plot
-    print('filename', filename)
     data=[]
     figure={}
     # for j in range(num_curves):
@@ -494,7 +521,7 @@ def build_graphjson(data_slice=None):
     # PlotlyJSONEncoder converts objects to their JSON equivalents
     figure=dict(data=data, layout=layout)
     graphJSON = json.dumps(figure, cls=plotly.utils.PlotlyJSONEncoder)
-
+    app_logger.debug('return graphJSON')
     return graphJSON
 
 def check_change(**kwargs):

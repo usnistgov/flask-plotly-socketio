@@ -2,9 +2,11 @@
 <html>
 <head>
     <title>flask webFridge</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="{{ url_for('static', filename='plotly-latest.min.js') }}"> </script>
     <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
     <!---
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
     <script src="{{ url_for('static', filename='plotly-latest.min.js') }}"> </script>
     <script src="{{ url_for('static', filename='snippet-javascript-console.min.js') }}"> </script>
     <script src="{{ url_for('static', filename='snippet-javascript-console.min.js') }}"> </script>
@@ -33,7 +35,7 @@
         }
         .column2 {
             float: left;
-            width: 60%; 
+            width: 60%;
         }
 
         /* Clear floats after the columns */
@@ -42,7 +44,7 @@
             display: table;
             clear: both;
         }
-        .checkboxes
+        .checkboxes {
            margin-left: 50px;
         }
         .size-12 {
@@ -59,7 +61,7 @@
 </head>
 
 <body>
-    <div class="row">
+  <div class="row">
         <div class="column">
             <div id="loading" style="margin-left:50px">Loading</div>
             <table id="datatable" class="datatable"> </table>
@@ -124,18 +126,19 @@
             <div id="console" class="console">
                 <textarea style="color:white;width:90%;margin:0px;background:black;height:100px" class="TextInput" autocomplete="off" readonly="true" onclick="" onchange="console.log('console change');"> Hello
             </textarea>
+            </div>
         </div>
     </div>
-
     <!-- allows page refresh every 10 seconds -->
-    <!meta http-equiv="refresh" content="10" >
+    <!-- <meta http&#45;equiv="refresh" content="10" > -->
 
-</body>
 
     <!--
     <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
     -->
+    <script src="{{ url_for('static', filename='plotly-latest.min.js') }}"> </script>
+    <script src="{{ url_for('static', filename='socket.io.min.js') }}"> </script>
     <script type="text/javascript" charset="utf-8">
         /**
          * Set Select Box Selection By Text
@@ -236,8 +239,7 @@
             if (msg) {
                 update_log_filename(names['log_filename']);
                 socket.emit('my_event','');
-                console.log('send my_event message');
-                // document.getElementById('download').innerHTML = names['log_filename'];
+                console.log('got connect event with a msg');
                 console.log('now try to unzoom');
                 socket.emit('unzoom', '');
 
@@ -363,5 +365,5 @@
         // var eid = document.getElementById("hp");
         // eid.checked = true;
     </script>
-
+</body>
 </html>
