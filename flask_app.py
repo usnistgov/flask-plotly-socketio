@@ -95,11 +95,13 @@ else:
     YAML_FILE = '../config.yaml'
 with open(YAML_FILE, 'r') as f:
     CONFIG = yaml.load(f)
+    table = CONFIG['show_list']
+    graph = CONFIG['graph']
 labels = labels.split(',')
 labels = [label.strip() for label in labels]
 for l in labels:
     print(len(l), l, type(l))
-graph = ['40K', '4K', '1K', 'switch', 'pump']
+# graph = ['40K', '4K', '1K', 'switch', 'pump']
 DATA = None
 SIZE = 100000
 HR_date = False
@@ -140,6 +142,8 @@ def load_history():
         #    history = deque(f, history_start)
         history_start = 100000
         history = deque(iter(output.decode().splitlines()), history_start)
+        history = output.decode().splitlines()
+        print('type history', type(history))
         data_history = np.genfromtxt(history, invalid_raise=False,
                                      delimiter=',')
     print(type(data_history), data_history.shape)
@@ -236,8 +240,10 @@ def background_thread():
                 # if idx is None:
                 #     print('Can not find ', name)
                 return idx
+            # print('labels', labels)
             for i, name in enumerate(graph):
                 idx = get_idx(labels, name)
+                # print(i, name, idx)
                 value = float(data[idx])
                 if np.isnan(value):
                     value = -1
@@ -313,6 +319,11 @@ def my_event(message):
                    'next_time': next_recycle_time}
         socketio.emit('update_recycle', message)
 
+def tweak_display():
+    alldata = {'elt': 'recycle', 'display': 'none'}
+    socketio.emit('display', alldata)  # ,namespace='/')
+    alldata = {'elt': 'checkboxes', 'display': 'none'}
+    socketio.emit('display', alldata)  # ,namespace='/')
 
 @socketio.on('new_logfile')  # , namespace='/')
 def new_logfile():
@@ -362,14 +373,14 @@ def zoom(message):
 
 @socketio.on('set_recycle_hour')  #, namespace='/')
 def set_recycle_hour(message):
-    print('my_event', request.sid)
+    print('set_recyle_hour', request.sid)
     print('recycle_hour message', type(message), message)
     fridge_client.send_string('set_recycle_hour '+message)    
     msg = fridge_client.recv_string()
 
 @socketio.on('switch')  #, namespace='/')
 def switch_event(message):
-    print('my_event', request.sid)
+    print('switch', request.sid)
     print('switch message', type(message), message)
     client_message = ' '.join(['set_heater', message['name'],
             '%s' % message['state']])
@@ -379,7 +390,7 @@ def switch_event(message):
 
 @socketio.on('state')  #, namespace='/')
 def switch_event(message):
-    print('my_event', request.sid)
+    print('state', request.sid)
     print('state message', type(message), message)
     #  This sends the data... should see if timesout...
     fridge_client.send_string('set_state '+message)
@@ -395,6 +406,7 @@ def download_logfile():
 
 @app.route("/", methods=['GET', 'POST'])
 def plot():
+    app_logger.info('plot from route')
     global DATA, graph
     plotTitle = 'Flask socketio plotly test app'
     # graphJSON = build_graphjson()
@@ -430,6 +442,7 @@ def plot():
     # try to connect to clients
     print('try to connect to clients')
     test_connect()
+    tweak_display()
     if False:
         client_message = 'get_recycle_hour'
         fridge_client.send_string(client_message)
@@ -612,5 +625,5 @@ if __name__ == "__main__":
 
     # Start Flask app
     #  socketio.run(app, host=ip, port=port_, debug=True, use_reloader=True)
-    socketio.run(app, host=ip, port=port_, debug=True, use_reloader=False)
+    socketio.run(app, host=ip, port=port_, debug=True, use_reloader=True)
     # socketio.run(app, host=ip, port=port_)
