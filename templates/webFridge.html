@@ -18,6 +18,7 @@
             border: 1px solid black;
             border-collapse: collapse;
             margin-left: 30px;
+            margin-top: 20px;
         }
         th, td {
             border: 1px solid black;
@@ -47,6 +48,9 @@
         .checkboxes {
            margin-left: 50px;
         }
+        .recycle {
+           margin-left: 50px;
+        }
         .size-12 {
             font-size: 18px;
         }
@@ -67,39 +71,43 @@
             <table id="datatable" class="datatable"> </table>
             <br>
             <div class="checkboxes">
-            <input type="checkbox"  id="manual"
-                                    onclick="clicked_switch(this);">
-                Manual<br>
-            <br>
-            <input type="checkbox"  id="hp" class="switch"
-                                    onclick="clicked_switch(this);">
-                Pump On<br>
-            <br>
-            <input type="checkbox"  id="hs" class="switch"
-                                    onclick="clicked_switch(this);">
-                Switch On<br>
-            <br>
-            <div id="compressor_div">
-                <input type="checkbox"  id="compressor" class="switch"
-                    onclick="console.log(this.checked);">
-                Compressor<br>
+                <input type="checkbox"  id="manual"
+                                        onclick="clicked_switch(this);">
+                    Manual<br>
+                <br>
+                <input type="checkbox"  id="hp" class="switch"
+                                        onclick="clicked_switch(this);">
+                    Pump On<br>
+                <br>
+                <input type="checkbox"  id="hs" class="switch"
+                                        onclick="clicked_switch(this);">
+                    Switch On<br>
+                <br>
+                <div id="compressor_div">
+                    <input type="checkbox"  id="compressor" class="switch"
+                        onclick="console.log(this.checked);">
+                    Compressor<br>
                 </div>
-            <select id="state" class="state"
-                               onchange="select_state(this);">
-                 {% for state in states %}
-                 <option> {{state}} </option>
-                 {% endfor %}
-            </select>
-            <br>
-            <br>
-            <div> 
-            Recycle Hour:
-            <input id = "hour" type="number" class="size-12" value="{{recycle_hour}}" min="-1" max="23" onchange="socket.emit('set_recycle_hour', this.value);">
             </div>
-            <br>
-            <div id="next">
-                Next Time: {{next_recycle_time}}
+            <div class=recycle>
+                <select id="state" class="state"
+                                   onchange="select_state(this);">
+                     {% for state in states %}
+                     <option> {{state}} </option>
+                     {% endfor %}
+                </select>
+                <br>
+                <br>
+                <div> 
+                Recycle Hour:
+                <input id = "hour" type="number" class="size-12" value="{{recycle_hour}}" min="-1" max="23" onchange="socket.emit('set_recycle_hour', this.value);">
+                </div>
+                <br>
+                <div id="next">
+                    Next Time: {{next_recycle_time}}
+                </div>
             </div>
+            <div>
             <br>
             <div id="download_hyperlink">
             <a id="download" href="/logfile"> Download log </a>
@@ -274,6 +282,11 @@
             console.log(data)
             document.getElementById('hour').value = data['recycle_hour'];
             document.getElementById('next').innerHTML = 'Next Time: ' + data['next_time'];
+            });
+        socket.on('display', function(data) {
+            console.log('display')
+            console.log(data)
+            document.getElementById(data['elt']).style.display = data['display']
             });
         socket.on('new_data', function(data){
             //console.log("madeeee it");
